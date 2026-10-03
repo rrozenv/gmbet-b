@@ -28,7 +28,7 @@
   --r-l: 16px;
   --gutter: 24px;
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --spring: cubic-bezier(0.34, 1.4, 0.44, 1);
+  --spring: cubic-bezier(0.22, 1.12, 0.36, 1);
   --font: Geist, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 @media (min-width: 720px) { :root { --gutter: 48px; } }
@@ -190,7 +190,7 @@ h1 { grid-area: h1; margin: 0 8px 32px; font-size: 44px; line-height: 48px; font
 .roll-sizer { visibility: hidden; }
 .roll-live { display: inline-flex; }
 .rd { display: inline-block; height: 1em; overflow: hidden; }
-.rd-s { display: flex; flex-direction: column; transform: translateY(calc(var(--d, 0) * -10%)); transition: transform 0.9s var(--spring); transition-delay: var(--dl, 0ms); }
+.rd-s { display: flex; flex-direction: column; transform: translateY(calc(var(--d, 0) * -10%)); transition: transform 1s var(--spring); transition-delay: var(--dl, 0ms); }
 .rd-s > span { height: 1em; }
 .roll.no-anim .rd-s { transition: none; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
@@ -209,7 +209,7 @@ h1 { grid-area: h1; margin: 0 8px 32px; font-size: 44px; line-height: 48px; font
   width: 48px; height: 48px; padding: 0; border: 0; border-radius: var(--r-s);
   background: var(--green); color: var(--green-ink); box-shadow: 0 4px 16px rgba(0, 210, 106, 0.3);
   transform: translateX(var(--x, 0px)); cursor: grab; touch-action: none;
-  transition: transform 0.45s var(--spring), background-color 0.2s, box-shadow 0.2s;
+  transition: transform 0.5s var(--spring), background-color 0.2s, box-shadow 0.2s;
 }
 .swipe-thumb:hover { background: var(--green-2); }
 .swipe-thumb:focus-visible { outline-color: var(--t1); outline-offset: 3px; }
@@ -266,7 +266,7 @@ h1 { grid-area: h1; margin: 0 8px 32px; font-size: 44px; line-height: 48px; font
 .feed-label { display: flex; flex-direction: column; justify-content: center; padding: 0 16px; box-shadow: 1px 0 0 var(--line); font-size: 13px; line-height: 16px; font-weight: 600; }
 .feed-sub { color: var(--t3); font-size: 11px; font-weight: 500; }
 .feed-track { position: relative; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); }
-.fi { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 6px; height: 56px; padding: 0 20px; color: var(--t2); font-size: 13px; white-space: nowrap; transform: translateX(var(--fx, 0px)); transition: transform 0.7s var(--ease), background-color 1.6s var(--ease); box-shadow: 1px 0 0 var(--line); }
+.fi { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 6px; height: 56px; padding: 0 20px; color: var(--t2); font-size: 13px; white-space: nowrap; transform: translateX(var(--fx, 0px)); transition: transform 0.75s var(--spring), background-color 1.5s var(--ease); box-shadow: 1px 0 0 var(--line); }
 .fi b { color: var(--t1); font-weight: 600; }
 .fi em { color: var(--green); font-style: normal; font-weight: 600; }
 .fi.is-new { background: rgba(0, 210, 106, 0.1); }
@@ -498,7 +498,9 @@ html.intro .hero-in > *, html.intro .wall, html.intro .feed, html.intro .slip-gl
 .tk-head { display: flex; align-items: center; justify-content: space-between; height: 32px; }
 .tk-title { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
 .tk-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
-.tk-count { color: var(--t3); font-size: 13px; font-weight: 500; }
+.tk-prog { display: flex; gap: 4px; }
+.tk-prog i { position: relative; width: 24px; height: 2px; border-radius: 1px; background: var(--line-2); overflow: hidden; }
+.tk-prog i::after { content: ""; position: absolute; inset: 0; background: var(--t1); transform-origin: left center; transform: scaleX(var(--f, 0)); }
 .tk-screens { position: relative; height: 336px; margin-top: 16px; }
 .tk-s { position: absolute; inset: 0; opacity: 0; visibility: hidden; }
 .tk-s.is-on { opacity: 1; visibility: visible; }
@@ -567,6 +569,5 @@ html.intro .hero-in > *, html.intro .wall, html.intro .feed, html.intro .slip-gl
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; transition-delay: 0ms !important; }
-  .js .reveal { opacity: 1; transform: none; }
   .dot-live::after, .dot-open::after { display: none; }
 }

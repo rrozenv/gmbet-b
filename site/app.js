@@ -12,6 +12,27 @@ const CFG = {
 
 document.documentElement.classList.add("js");
 const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// Every move on the page lands on a 120 BPM grid. Eighth notes for the wall, beats for the hero game and the win.
+const BEAT = 500;
+const EIGHTH = BEAT / 2;
+const GRID0 = performance.now();
+const onGrid = (t, unit = EIGHTH) => GRID0 + Math.ceil((t - GRID0) / unit) * unit;
+const untilGrid = (ms, unit = BEAT) => onGrid(performance.now() + ms, unit) - performance.now();
+
+// Closed-form damped spring, normalized to settle by t = 1. zeta 0.8 overshoots about 1.5%.
+const spring = (zeta = 0.8) => {
+  const w = 7 / zeta;
+  const wd = w * Math.sqrt(1 - zeta * zeta);
+  return (t) => (t >= 1 ? 1 : 1 - Math.exp(-zeta * w * t) * (Math.cos(wd * t) + ((zeta * w) / wd) * Math.sin(wd * t)));
+};
+const SPRING = spring(0.8);
+const SPRING_SOFT = spring(0.9);
+if (window.CSS && CSS.supports("transition-timing-function", "linear(0, 1)")) {
+  const roll = spring(0.75);
+  const pts = Array.from({ length: 41 }, (_, i) => +roll(i / 40).toFixed(4));
+  document.documentElement.style.setProperty("--spring", `linear(${pts.join(", ")})`);
+}
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -85,7 +106,7 @@ class Roll {
     if (RM || instant) return jump(digits);
     if (from0 || rebuilt) jump(digits.map(() => 0));
     this.strips.forEach((s, i) => {
-      s.style.setProperty("--dl", delay + i * 60 + "ms");
+      s.style.setProperty("--dl", delay + i * (EIGHTH / 4) + "ms");
       s.style.setProperty("--d", digits[i]);
     });
   }
@@ -171,7 +192,7 @@ function startGame(t, now, fresh) {
   const used = (startPly / 2) * (t.fmt.think[0] + t.fmt.think[1]) * 0.5;
   t.clocks = [t.fmt.secs - used * rand(0.8, 1.2), t.fmt.secs - used * rand(0.8, 1.2)];
   t.turnAt = now;
-  t.nextAt = now + rand(t.fmt.think[0], t.fmt.think[1]) * 1000 * (fresh ? 1.4 : rand(0.2, 1));
+  t.nextAt = onGrid(now + rand(t.fmt.think[0], t.fmt.think[1]) * 1000 * (fresh ? 1.4 : rand(0.2, 1)));
   t.state = "live";
   t.shown = -1;
   t.el.classList.remove("is-won");
@@ -204,7 +225,7 @@ function paintClock(t, now) {
 
 function finish(t, now) {
   t.state = "done";
-  t.doneUntil = now + 4200;
+  t.doneUntil = onGrid(now + 4200, BEAT);
   const win = t.winner === "w" ? t.white : t.black;
   if (t.end === "mate") t.board.markMate(t.winner === "w" ? "b" : "w");
   t.n.stt.textContent = t.end === "mate" ? "Checkmate" : "Resigned";
@@ -231,7 +252,7 @@ function stepTile(t, now) {
       t.ply++;
       t.turnAt = now;
       if (t.ply >= t.moves.length) return finish(t, now);
-      t.nextAt = now + rand(t.fmt.think[0], t.fmt.think[1]) * 1000;
+      t.nextAt = onGrid(now + rand(t.fmt.think[0], t.fmt.think[1]) * 1000);
       turnUi(t);
       t.shown = -1;
     }
@@ -456,7 +477,7 @@ function commit() {
   setThumb(thumbMax());
   if (navigator.vibrate) navigator.vibrate(12);
   sweep();
-  if (MOTION) G.to(wallEl, { scale: 1.06, duration: 1.6, ease: "expo.out" });
+  if (MOTION) G.to(wallEl, { scale: 1.06, duration: 1.5, ease: SPRING_SOFT });
   chips.forEach((c) => (c.disabled = true));
   $("[data-next]").disabled = true;
   $("[data-slip-title]").textContent = `Matched with ${S.opp.n}`;
@@ -477,13 +498,13 @@ function commit() {
     clkB.classList.toggle("on", ply % 2 === 1 && ply < moves.length);
     if (ply < moves.length) {
       statusEl.innerHTML = `<b>Live</b> · Move ${Math.ceil((ply + 1) / 2)} · ${ply % 2 ? S.opp.n : "You"}`;
-      later(step, ply % 2 ? 560 : 420);
-    } else later(() => won(pot), 380);
+      later(step, untilGrid(BEAT * 0.8));
+    } else later(() => won(pot), untilGrid(BEAT * 0.8));
   };
   if (RM) {
     moves.forEach((m) => slipBoard.play(m, 0));
     later(() => won(pot), 200);
-  } else later(step, 700);
+  } else later(step, untilGrid(BEAT * 1.5));
 }
 
 function won(pot) {
@@ -500,7 +521,7 @@ function won(pot) {
   ripple();
   if (MOTION) G.fromTo(glow, { opacity: 1 }, { opacity: 0.55, duration: 0.25, yoyo: true, repeat: 3, ease: "power1.inOut" });
   const msg = `<b>You</b> won <em>${money(pot)}</em> · vs ${S.opp.n} · ${S.opp.c}`;
-  later(() => fly("+" + money(pot), $("[data-roll-win]")).then(() => pushFeed(msg, "is-you")), 650);
+  later(() => fly("+" + money(pot), $("[data-roll-win]")).then(() => pushFeed(msg, "is-you")), untilGrid(BEAT * 0.8));
   later(resetSlip, 9000);
 }
 
@@ -511,7 +532,7 @@ function sweep() {
 }
 
 function resetSlip() {
-  if (MOTION) G.to(wallEl, { scale: 1, duration: 1.4, ease: "expo.out" });
+  if (MOTION) G.to(wallEl, { scale: 1, duration: 1.5, ease: SPRING_SOFT });
   S.timers.forEach(clearTimeout);
   S.timers = [];
   S.state = "idle";
@@ -683,22 +704,23 @@ function intro() {
       return [t, Math.hypot(r.left + r.width / 2 - slipC.x, r.top + r.height / 2 - slipC.y)];
     })
   );
-  const tl = G.timeline({ defaults: { ease: "expo.out" }, onComplete: () => root.classList.remove("intro") });
+  // Positions are in beats at 120 BPM; the tile wave steps in sixteenth notes.
+  const b = (n) => (n * BEAT) / 1000;
+  const sixteenth = b(0.25);
+  const tl = G.timeline({ defaults: { ease: SPRING }, onComplete: () => root.classList.remove("intro") });
   tl.set([".wall", ".slip-glow", "#hero-h"], { opacity: 1 }, 0)
-    .fromTo(plane, { rotationX: 62, rotationZ: -20, scale: 1.3, yPercent: 6 }, { rotationX: 30, rotationZ: -9, scale: 1, yPercent: 0, duration: 2.8 }, 0)
-    .fromTo(tileEls, { opacity: 0 }, { opacity: 1, duration: 0.9, ease: "power2.out", stagger: (i, t) => delays.get(t) / 1500 }, 0.1)
-    .fromTo(".eyebrow", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 1 }, 0.2)
-    .fromTo(words, { yPercent: 118 }, { yPercent: 0, duration: 1.3, stagger: 0.05 }, 0.28)
-    .fromTo(slip, { opacity: 0, y: 72, rotationX: 16, scale: 0.94, transformPerspective: 1200, transformOrigin: "50% 100%" }, { opacity: 1, y: 0, rotationX: 0, scale: 1, duration: 1.6, clearProps: "transform" }, 0.5)
-    .fromTo(glow, { opacity: 0 }, { opacity: 1, duration: 2.2, ease: "power2.out" }, 0.8)
+    .fromTo(plane, { rotationX: 62, rotationZ: -20, scale: 1.3, yPercent: 6 }, { rotationX: 30, rotationZ: -9, scale: 1, yPercent: 0, duration: b(6), ease: spring(0.95) }, 0)
+    .fromTo(tileEls, { opacity: 0 }, { opacity: 1, duration: b(1.5), ease: "power2.out", stagger: (i, t) => Math.round(delays.get(t) / 1500 / sixteenth) * sixteenth }, 0)
+    .fromTo(".eyebrow", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: b(1.5) }, b(0.5))
+    .fromTo(words, { yPercent: 118 }, { yPercent: 0, duration: b(2), stagger: sixteenth }, b(1))
+    .fromTo(slip, { opacity: 0, y: 72, rotationX: 16, scale: 0.94, transformPerspective: 1200, transformOrigin: "50% 100%" }, { opacity: 1, y: 0, rotationX: 0, scale: 1, duration: b(3), clearProps: "transform" }, b(2))
+    .fromTo(glow, { opacity: 0 }, { opacity: 1, duration: b(4), ease: "power2.out" }, b(2))
     .add(() => {
       winRoll.set(money(S.stake * 2), { from0: true });
-      slip.classList.remove("is-sweep");
-      void slip.offsetWidth;
-      slip.classList.add("is-sweep");
-    }, 1.0)
-    .fromTo([".lede", ".ctas", ".beta"], { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 1.1, stagger: 0.08 }, 0.85)
-    .fromTo(".feed", { opacity: 0, yPercent: 100 }, { opacity: 1, yPercent: 0, duration: 1.2 }, 1.1);
+      sweep();
+    }, b(3))
+    .fromTo([".lede", ".ctas", ".beta"], { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: b(2), stagger: b(0.5) }, b(3))
+    .fromTo(".feed", { opacity: 0, yPercent: 100 }, { opacity: 1, yPercent: 0, duration: b(2) }, b(4));
 }
 
 function setUpChoreography() {
@@ -721,15 +743,15 @@ function setUpChoreography() {
     { rotationX: 26, y: 96, scale: 0.88, transformPerspective: 1400, transformOrigin: "50% 100%" },
     { rotationX: 0, y: 0, scale: 1, ease: "none", scrollTrigger: { trigger: ".story", start: "top bottom", end: "top top", scrub: true } }
   );
-  G.from(".hours-head > *", { opacity: 0, y: 40, duration: 1.2, ease: "expo.out", stagger: 0.1, scrollTrigger: { trigger: ".hours", start: "top 75%" } });
-  G.from(".sec-math .h2", { opacity: 0, y: 40, duration: 1.2, ease: "expo.out", scrollTrigger: { trigger: ".sec-math", start: "top 75%" } });
-  G.from(".m-cell", { opacity: 0, y: 64, duration: 1.3, ease: "expo.out", stagger: 0.12, scrollTrigger: { trigger: ".math", start: "top 80%" } });
-  G.from([".math-note", ".token-line"], { opacity: 0, y: 24, duration: 1, ease: "expo.out", stagger: 0.1, scrollTrigger: { trigger: ".math-note", start: "top 90%" } });
-  G.from("#friends .h2, #friends .sub", { opacity: 0, y: 40, duration: 1.2, ease: "expo.out", stagger: 0.1, scrollTrigger: { trigger: "#friends", start: "top 75%" } });
-  G.from(".fr", { opacity: 0, y: 80, rotationX: 14, transformPerspective: 1200, transformOrigin: "50% 0%", duration: 1.4, ease: "expo.out", stagger: 0.12, scrollTrigger: { trigger: ".friends", start: "top 82%" } });
+  G.from(".hours-head > *", { opacity: 0, y: 40, duration: 1.2, ease: SPRING, stagger: 0.1, scrollTrigger: { trigger: ".hours", start: "top 75%" } });
+  G.from(".sec-math .h2", { opacity: 0, y: 40, duration: 1.2, ease: SPRING, scrollTrigger: { trigger: ".sec-math", start: "top 75%" } });
+  G.from(".m-cell", { opacity: 0, y: 64, duration: 1.3, ease: SPRING, stagger: 0.12, scrollTrigger: { trigger: ".math", start: "top 80%" } });
+  G.from([".math-note", ".token-line"], { opacity: 0, y: 24, duration: 1, ease: SPRING, stagger: 0.1, scrollTrigger: { trigger: ".math-note", start: "top 90%" } });
+  G.from("#friends .h2, #friends .sub", { opacity: 0, y: 40, duration: 1.2, ease: SPRING, stagger: 0.1, scrollTrigger: { trigger: "#friends", start: "top 75%" } });
+  G.from(".fr", { opacity: 0, y: 80, rotationX: 14, transformPerspective: 1200, transformOrigin: "50% 0%", duration: 1.4, ease: SPRING, stagger: 0.12, scrollTrigger: { trigger: ".friends", start: "top 82%" } });
   G.from(".share-card", { rotation: -14, y: 24, scale: 0.9, duration: 1.6, ease: "elastic.out(1, 0.6)", scrollTrigger: { trigger: ".friends", start: "top 70%" } });
-  G.from(".follow li", { opacity: 0, x: 32, duration: 1, ease: "expo.out", stagger: 0.1, scrollTrigger: { trigger: ".friends", start: "top 70%" } });
-  G.from(".join-copy > *, .join-card", { opacity: 0, y: 48, duration: 1.3, ease: "expo.out", stagger: 0.1, scrollTrigger: { trigger: "#join", start: "top 75%" } });
+  G.from(".follow li", { opacity: 0, x: 32, duration: 1, ease: SPRING, stagger: 0.1, scrollTrigger: { trigger: ".friends", start: "top 70%" } });
+  G.from(".join-copy > *, .join-card", { opacity: 0, y: 48, duration: 1.3, ease: SPRING, stagger: 0.1, scrollTrigger: { trigger: "#join", start: "top 75%" } });
 }
 
 function setUpMathRolls() {
@@ -815,6 +837,7 @@ function setUpStory() {
   const rows = $$(".tk-row");
   const sw = $("[data-tk-swipe]");
   const bar = $("[data-story-bar]");
+  const prog = $$("[data-tk-prog] i");
   const roll = new Roll($("[data-story-roll]"));
   const pay = $("[data-story-roll]");
   const stateEl = $("[data-tk-state]");
@@ -833,13 +856,12 @@ function setUpStory() {
     step = n;
     steps.forEach((li, i) => li.classList.toggle("is-on", i === n));
     $("[data-tk-title]").textContent = titles[n];
-    $("[data-tk-count]").textContent = n + 1 + " / 3";
     screens.forEach((s, i) => {
       s.classList.toggle("is-on", i === n);
       if (!G) return;
       const dir = n > prev ? 1 : -1;
-      if (i === n) G.fromTo(s, { autoAlpha: 0, y: 32 * dir }, { autoAlpha: 1, y: 0, duration: RM ? 0 : 0.7, ease: "expo.out", overwrite: true });
-      else if (i === prev) G.to(s, { autoAlpha: 0, y: -32 * dir, duration: RM ? 0 : 0.35, ease: "power2.in", overwrite: true });
+      if (i === n) G.fromTo(s, { autoAlpha: 0, y: 32 * dir }, { autoAlpha: 1, y: 0, duration: RM ? 0 : 0.75, ease: SPRING, overwrite: true });
+      else if (i === prev) G.to(s, { autoAlpha: 0, y: -32 * dir, duration: RM ? 0 : 0.25, ease: "power2.in", overwrite: true });
       else G.set(s, { autoAlpha: 0 });
     });
   };
@@ -873,6 +895,7 @@ function setUpStory() {
     show(n);
     const local = clamp(n === 0 ? p / 0.32 : n === 1 ? (p - 0.32) / 0.32 : (p - 0.64) / 0.36);
     bar.style.transform = `scaleY(${p.toFixed(4)})`;
+    prog.forEach((seg, i) => seg.style.setProperty("--f", clamp((p - i * 0.32) / 0.32).toFixed(3)));
     typeEl.textContent = word.slice(0, n > 0 ? word.length : Math.floor(clamp(local / 0.45) * word.length));
     rows.forEach((r, i) => r.classList.toggle("on", n > 0 || local > 0.5 + i * 0.11));
     const q = n > 1 ? 1 : n < 1 ? 0 : clamp((local - 0.15) / 0.6);
@@ -928,10 +951,10 @@ function fly(text, from) {
   G.set(chip, { x: a.left, y: a.top - 44, scale: 0.6, opacity: 0, transformOrigin: "0% 50%" });
   return new Promise((done) => {
     G.timeline({ onComplete: () => (chip.remove(), done()) })
-      .to(chip, { opacity: 1, scale: 1, duration: 0.35, ease: "expo.out" })
-      .to(chip, { x: x1, duration: 1.0, ease: "power3.inOut" }, 0.3)
-      .to(chip, { y: y1, duration: 1.0, ease: "back.in(1.2)" }, 0.3)
-      .to(chip, { scale: 0.8, opacity: 0, duration: 0.25, ease: "power2.in" }, 1.1);
+      .to(chip, { opacity: 1, scale: 1, duration: 0.25, ease: SPRING })
+      .to(chip, { x: x1, duration: 0.75, ease: "power3.inOut" }, 0.25)
+      .to(chip, { y: y1, duration: 0.75, ease: "back.in(1.2)" }, 0.25)
+      .to(chip, { scale: 0.8, opacity: 0, duration: 0.125, ease: "power2.in" }, 0.875);
   });
 }
 
