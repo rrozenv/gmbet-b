@@ -77,6 +77,7 @@
     <p class="beta">Beta in October. gm.</p>
 
     <div class="slip" data-slip data-state="idle" aria-labelledby="slip-h">
+      <span class="slip-sweep" aria-hidden="true"></span>
       <div class="slip-head">
         <h2 class="slip-title" id="slip-h"><span class="dot-open" aria-hidden="true"></span><span data-slip-title>Open challenge</span></h2>
         <span class="tag">Preview</span>
@@ -155,7 +156,7 @@
         <h2 class="h2" id="how-h">How it works</h2>
         <div class="story-rail" aria-hidden="true"><i data-story-bar></i></div>
         <ol class="story-steps">
-          <li class="is-on" data-step="0"><h3>Link.</h3><p>Connect your Chess.com account once. Your username and rating come with you.</p></li>
+          <li class="is-on" data-step="0"><h3>Link your Chess.com account.</h3><p>Do it once. Your username, rating, and record come with you.</p></li>
           <li data-step="1"><h3>Bet.</h3><p>Pick a stake and swipe once. We match you with a player at your rating, anywhere in the world.</p></li>
           <li data-step="2"><h3>Play and win.</h3><p>Play on Chess.com, with its ratings and cheat detection. Win, and the pot lands in your wallet about a minute after the game ends.</p></li>
         </ol>
@@ -164,7 +165,7 @@
       <div class="story-stage" aria-hidden="true">
         <div class="ticket">
           <div class="tk-head">
-            <span class="tk-title"><span class="tk-dot"></span><span data-tk-title>Link Chess.com</span></span>
+            <span class="tk-title"><span class="tk-dot"></span><span data-tk-title>Link your Chess.com account</span></span>
             <span class="tk-prog" data-tk-prog><i></i><i></i><i></i></span>
           </div>
           <div class="tk-screens">
@@ -204,6 +205,48 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec sec-link" id="link" aria-labelledby="link-h">
+  <div class="wrap link">
+    <div class="link-copy">
+      <h2 class="h2" id="link-h">Link your Chess.com account.</h2>
+      <p class="sub">Type your username. We read your public Chess.com profile, so your rating and record come with you.</p>
+    </div>
+    <div class="link-card">
+      <form class="lookup" data-lookup novalidate>
+        <label class="fld">
+          <span class="fld-l">Chess.com username</span>
+          <span class="lookup-row">
+            <input type="text" name="u" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="your username" maxlength="25" required data-lookup-input>
+            <button class="btn btn-light" type="submit" data-lookup-btn>Look up</button>
+          </span>
+        </label>
+      </form>
+      <div class="me" data-me data-state="empty">
+        <p class="me-empty">Your profile shows up here.</p>
+        <div class="me-load" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="me-card">
+          <div class="me-top">
+            <span class="me-ava-box"><img class="me-ava" data-me-ava alt="" width="56" height="56" decoding="async" referrerpolicy="no-referrer" hidden><span class="me-ini" data-me-ini></span></span>
+            <span class="me-id"><span class="me-name" data-me-name></span><span class="me-sub" data-me-sub></span></span>
+          </div>
+          <div class="me-stats">
+            <span class="me-st"><span class="me-k">Blitz</span><span class="me-v num" data-me-r="chess_blitz">–</span></span>
+            <span class="me-st"><span class="me-k">Rapid</span><span class="me-v num" data-me-r="chess_rapid">–</span></span>
+            <span class="me-st"><span class="me-k">Bullet</span><span class="me-v num" data-me-r="chess_bullet">–</span></span>
+          </div>
+          <p class="me-rec num" data-me-rec></p>
+          <div class="me-foot">
+            <p class="me-ok">This is you? You’re ready to play.</p>
+            <a class="btn btn-green btn-sm" href="#join" data-me-join>Save my spot</a>
+          </div>
+        </div>
+        <p class="me-msg" data-me-msg></p>
+      </div>
+      <p class="sr" aria-live="polite" data-me-live></p>
     </div>
   </div>
 </section>
@@ -339,7 +382,7 @@
     <p class="foot-brand"><span class="mark mark-sm" aria-hidden="true">gm</span> GM Bet · Beta in October</p>
     <ul class="fine">
       <li>Preview: the games, players, and payouts on this page are samples. No money moves.</li>
-      <li>GM Bet is not affiliated with Chess.com.</li>
+      <li>GM Bet is not affiliated with or endorsed by Chess.com. Chess.com is a trademark of Chess.com, LLC.</li>
       <li>Real-money play only where it is legal, for adults 18 and over.</li>
       <li>Nothing on this page is an offer to sell securities or tokens.</li>
       <li>Chess pieces by Colin M.L. Burnett, BSD license.</li>

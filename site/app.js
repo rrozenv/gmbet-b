@@ -235,9 +235,7 @@ function finish(t, now) {
   t.n.stake.textContent = win.n + " won";
   t.n.win.textContent = "+" + dollars(t.stake * 2);
   t.el.classList.add("is-won");
-  const y = t.y - t.col.offset;
-  const visible = y > 0 && y < geo.h - geo.th && t.col.x + geo.tw > geo.feedMinX;
-  if (visible && now - lastFeedAt > 2400) {
+  if (t.vis && t.cx > geo.feedMinX && now - lastFeedAt > 2400) {
     lastFeedAt = now;
     pushFeed(`<b>${win.n}</b> won <em>${dollars(t.stake * 2)}</em> · ${t.fmt.name} · ${win.c}`);
   }
@@ -248,7 +246,9 @@ function stepTile(t, now) {
     if (now >= t.nextAt) {
       const side = t.ply % 2;
       t.clocks[side] -= (now - t.turnAt) / 1000;
-      t.board.play(t.moves[t.ply], 260);
+      const animate = t.vis && animating < ANIM_CAP;
+      if (animate) animating++;
+      t.board.play(t.moves[t.ply], animate ? 260 : 0);
       t.ply++;
       t.turnAt = now;
       if (t.ply >= t.moves.length) return finish(t, now);
@@ -256,7 +256,7 @@ function stepTile(t, now) {
       turnUi(t);
       t.shown = -1;
     }
-    paintClock(t, now);
+    if (t.vis) paintClock(t, now);
   } else if (now >= t.doneUntil) {
     startGame(t, now, true);
   }
@@ -286,6 +286,7 @@ function layoutWall() {
   const n = Math.ceil((w + g.gap) / pitchX);
   const x0 = Math.round((w - (n * pitchX - g.gap)) / 2);
   const rows = Math.ceil(h / pitchY) + 2;
+  tileIO.disconnect();
   wallEl.textContent = "";
   wallEl.classList.toggle("compact", !g.time);
   wallEl.style.setProperty("--tw", g.tw + "px");
@@ -304,6 +305,8 @@ function layoutWall() {
       t.y = r * pitchY - pitchY;
       t.el.style.transform = `translate3d(0,${t.y}px,0)`;
       colEl.append(t.el);
+      tileOf.set(t.el, t);
+      tileIO.observe(t.el);
       col.tiles.push(t);
       tiles.push(t);
     }
@@ -492,14 +495,14 @@ function commit() {
     const side = ply % 2;
     clocks[side] -= Math.round(rand(2, 9));
     (side ? clkB : clkW).textContent = clock(clocks[side]);
-    slipBoard.play(moves[ply], RM ? 0 : 300);
+    slipBoard.play(moves[ply], RM ? 0 : 220);
     ply++;
     clkW.classList.toggle("on", ply % 2 === 0 && ply < moves.length);
     clkB.classList.toggle("on", ply % 2 === 1 && ply < moves.length);
     if (ply < moves.length) {
       statusEl.innerHTML = `<b>Live</b> · Move ${Math.ceil((ply + 1) / 2)} · ${ply % 2 ? S.opp.n : "You"}`;
-      later(step, untilGrid(BEAT * 0.8));
-    } else later(() => won(pot), untilGrid(BEAT * 0.8));
+      later(step, ply % 2 ? untilGrid(EIGHTH * 0.6, EIGHTH) : untilGrid(BEAT * 0.8, EIGHTH));
+    } else later(() => won(pot), untilGrid(EIGHTH * 0.6, EIGHTH));
   };
   if (RM) {
     moves.forEach((m) => slipBoard.play(m, 0));
@@ -604,29 +607,55 @@ function paintTimes() {
 }
 
 /* ---------- Loop ---------- */
+// One loop for everything: GSAP's ticker drives Lenis, the wall, and the boards in the same requestAnimationFrame.
+const PHONE = matchMedia("(max-width: 719px)").matches;
+const ANIM_CAP = PHONE ? 4 : 8;
+const DRAW_CAP = PHONE ? 6 : 10;
+let animating = 0;
 let running = false;
 let last = 0;
 let heroVisible = true;
-function frame(now) {
+
+// Visibility comes from the browser's own intersection pass, so the loop never forces a layout read.
+const tileOf = new WeakMap();
+const tileIO = new IntersectionObserver((entries) => {
+  for (const e of entries) {
+    const t = tileOf.get(e.target);
+    if (!t) continue;
+    if (e.isIntersecting && !t.vis) t.board.dirty = true;
+    t.vis = e.isIntersecting;
+    const r = e.boundingClientRect;
+    t.cx = r.left + r.width / 2;
+    t.cy = r.top + r.height / 2;
+  }
+});
+
+function frame() {
   if (!running) return;
+  const now = performance.now();
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
-  if (heroVisible && !RM) {
+  if (heroVisible && !RM && tiles.length) {
+    animating = 0;
+    for (const t of tiles) if (t.board.anim) animating++;
     moveWall(dt);
-    for (const t of tiles) {
-      stepTile(t, now);
-      t.board.frame(now);
-    }
+    for (const t of tiles) stepTile(t, now);
+    let draws = 0;
+    for (const t of tiles) if (t.vis && t.board.anim && draws < DRAW_CAP) (t.board.frame(now), draws++);
+    for (const t of tiles) if (t.vis && t.board.dirty && !t.board.anim && draws < DRAW_CAP) (t.board.frame(now), draws++);
   }
   slipBoard.frame(now);
   storyBoard.frame(now);
-  requestAnimationFrame(frame);
 }
 function run() {
   if (running) return;
   running = true;
   last = performance.now();
-  requestAnimationFrame(frame);
+  if (G) G.ticker.add(frame);
+  else {
+    const loop = () => (frame(), requestAnimationFrame(loop));
+    requestAnimationFrame(loop);
+  }
 }
 
 /* ---------- Motion: smooth scroll, intro, scroll choreography ---------- */
@@ -659,26 +688,6 @@ function setUpScroll() {
   );
 }
 
-function splitWords(root) {
-  const out = [];
-  [...root.childNodes].forEach((n) => {
-    if (n.nodeType === 3) {
-      const frag = document.createDocumentFragment();
-      n.textContent.split(/(\s+)/).forEach((part) => {
-        if (!part) return;
-        if (/^\s+$/.test(part)) return frag.append(document.createTextNode(" "));
-        const w = el("span", "hw");
-        const inner = el("span", "hwi", part);
-        w.append(inner);
-        frag.append(w);
-        out.push(inner);
-      });
-      n.replaceWith(frag);
-    } else if (n.nodeType === 1) out.push(...splitWords(n));
-  });
-  return out;
-}
-
 function placeGlow() {
   const h = glow.parentElement.getBoundingClientRect();
   const s = slip.getBoundingClientRect();
@@ -692,7 +701,6 @@ function intro() {
     return;
   }
   const plane = wallEl;
-  const words = splitWords($("#hero-h"));
   const slipC = { x: 0, y: 0 };
   const sr = slip.getBoundingClientRect();
   slipC.x = sr.left + sr.width / 2;
@@ -708,11 +716,10 @@ function intro() {
   const b = (n) => (n * BEAT) / 1000;
   const sixteenth = b(0.25);
   const tl = G.timeline({ defaults: { ease: SPRING }, onComplete: () => root.classList.remove("intro") });
-  tl.set([".wall", ".slip-glow", "#hero-h"], { opacity: 1 }, 0)
+  tl.set([".wall", ".slip-glow"], { opacity: 1 }, 0)
     .fromTo(plane, { rotationX: 62, rotationZ: -20, scale: 1.3, yPercent: 6 }, { rotationX: 30, rotationZ: -9, scale: 1, yPercent: 0, duration: b(6), ease: spring(0.95) }, 0)
     .fromTo(tileEls, { opacity: 0 }, { opacity: 1, duration: b(1.5), ease: "power2.out", stagger: (i, t) => Math.round(delays.get(t) / 1500 / sixteenth) * sixteenth }, 0)
     .fromTo(".eyebrow", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: b(1.5) }, b(0.5))
-    .fromTo(words, { yPercent: 118 }, { yPercent: 0, duration: b(2), stagger: sixteenth }, b(1))
     .fromTo(slip, { opacity: 0, y: 72, rotationX: 16, scale: 0.94, transformPerspective: 1200, transformOrigin: "50% 100%" }, { opacity: 1, y: 0, rotationX: 0, scale: 1, duration: b(3), clearProps: "transform" }, b(2))
     .fromTo(glow, { opacity: 0 }, { opacity: 1, duration: b(4), ease: "power2.out" }, b(2))
     .add(() => {
@@ -744,6 +751,7 @@ function setUpChoreography() {
     { rotationX: 0, y: 0, scale: 1, ease: "none", scrollTrigger: { trigger: ".story", start: "top bottom", end: "top top", scrub: true } }
   );
   G.from(".hours-head > *", { opacity: 0, y: 40, duration: 1.2, ease: SPRING, stagger: 0.1, scrollTrigger: { trigger: ".hours", start: "top 75%" } });
+  G.from(".link-copy > *, .link-card", { opacity: 0, y: 48, duration: 1.25, ease: SPRING, stagger: 0.125, scrollTrigger: { trigger: "#link", start: "top 75%" } });
   G.from(".sec-math .h2", { opacity: 0, y: 40, duration: 1.2, ease: SPRING, scrollTrigger: { trigger: ".sec-math", start: "top 75%" } });
   G.from(".m-cell", { opacity: 0, y: 64, duration: 1.3, ease: SPRING, stagger: 0.12, scrollTrigger: { trigger: ".math", start: "top 80%" } });
   G.from([".math-note", ".token-line"], { opacity: 0, y: 24, duration: 1, ease: SPRING, stagger: 0.1, scrollTrigger: { trigger: ".math-note", start: "top 90%" } });
@@ -769,9 +777,9 @@ function setUpMathRolls() {
 
 /* ---------- World clocks ---------- */
 const CITIES = [
-  ["New York", "America/New_York"], ["São Paulo", "America/Sao_Paulo"], ["Lisbon", "Europe/Lisbon"], ["Lagos", "Africa/Lagos"],
-  ["Berlin", "Europe/Berlin"], ["Istanbul", "Europe/Istanbul"], ["Bangkok", "Asia/Bangkok"], ["Seoul", "Asia/Seoul"],
-  ["Tokyo", "Asia/Tokyo"], ["Sydney", "Australia/Sydney"], ["Honolulu", "Pacific/Honolulu"], ["Los Angeles", "America/Los_Angeles"],
+  ["New York", "America/New_York"], ["São Paulo", "America/Sao_Paulo"], ["Lisbon", "Europe/Lisbon"], ["Berlin", "Europe/Berlin"],
+  ["Istanbul", "Europe/Istanbul"], ["Bangkok", "Asia/Bangkok"], ["Singapore", "Asia/Singapore"], ["Seoul", "Asia/Seoul"],
+  ["Sydney", "Australia/Sydney"], ["Auckland", "Pacific/Auckland"], ["Honolulu", "Pacific/Honolulu"], ["Los Angeles", "America/Los_Angeles"],
   ["Mexico City", "America/Mexico_City"],
 ];
 function setUpHours() {
@@ -844,8 +852,16 @@ function setUpStory() {
   const subEl = $("[data-tk-sub]");
   const moves = HERO_GAME.m.split(",");
   const word = "rob_nyc";
-  const titles = ["Link Chess.com", "Bet in one swipe", "Play and get paid"];
+  const titles = ["Link your Chess.com account", "Bet in one swipe", "Play and get paid"];
   const clamp = (v) => Math.max(0, Math.min(1, v));
+  const cache = new WeakMap();
+  const set = (node, prop, value) => {
+    const c = cache.get(node) || {};
+    if (c[prop] === value) return;
+    c[prop] = value;
+    cache.set(node, c);
+    node.style.setProperty(prop, value);
+  };
   let step = 0;
   let ply = 0;
   let paid = false;
@@ -894,12 +910,13 @@ function setUpStory() {
     const n = p < 0.32 ? 0 : p < 0.64 ? 1 : 2;
     show(n);
     const local = clamp(n === 0 ? p / 0.32 : n === 1 ? (p - 0.32) / 0.32 : (p - 0.64) / 0.36);
-    bar.style.transform = `scaleY(${p.toFixed(4)})`;
-    prog.forEach((seg, i) => seg.style.setProperty("--f", clamp((p - i * 0.32) / 0.32).toFixed(3)));
-    typeEl.textContent = word.slice(0, n > 0 ? word.length : Math.floor(clamp(local / 0.45) * word.length));
+    set(bar, "transform", `scaleY(${p.toFixed(3)})`);
+    prog.forEach((seg, i) => set(seg, "--f", clamp((p - i * 0.32) / 0.32).toFixed(3)));
+    const typed = word.slice(0, n > 0 ? word.length : Math.floor(clamp(local / 0.45) * word.length));
+    if (typed !== typeEl.textContent) typeEl.textContent = typed;
     rows.forEach((r, i) => r.classList.toggle("on", n > 0 || local > 0.5 + i * 0.11));
     const q = n > 1 ? 1 : n < 1 ? 0 : clamp((local - 0.15) / 0.6);
-    sw.style.setProperty("--q", q.toFixed(4));
+    set(sw, "--q", q.toFixed(3));
     sw.classList.toggle("is-done", q >= 1);
     playTo(n < 2 ? 0 : Math.round(clamp(local / 0.72) * moves.length));
   };
@@ -931,9 +948,8 @@ function ripple() {
   hero.insertBefore(ring, $(".wall-tag"));
   G.fromTo(ring, { scale: 0.4, opacity: 1 }, { scale: 9, opacity: 0, duration: 2.2, ease: "power2.out", onComplete: () => ring.remove() });
   for (const t of tiles) {
-    const r = t.el.getBoundingClientRect();
-    if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) continue;
-    const d = Math.hypot(r.left + r.width / 2 - cx, r.top + r.height / 2 - cy) / 1100;
+    if (!t.vis) continue;
+    const d = Math.hypot(t.cx - cx, t.cy - cy) / 1100;
     G.delayedCall(d, () => t.el.classList.add("ripple"));
     G.delayedCall(d + 0.32, () => t.el.classList.remove("ripple"));
   }
@@ -955,6 +971,106 @@ function fly(text, from) {
       .to(chip, { x: x1, duration: 0.75, ease: "power3.inOut" }, 0.25)
       .to(chip, { y: y1, duration: 0.75, ease: "back.in(1.2)" }, 0.25)
       .to(chip, { scale: 0.8, opacity: 0, duration: 0.125, ease: "power2.in" }, 0.875);
+  });
+}
+
+/* ---------- Link your Chess.com account: live lookup on the public API ---------- */
+function setUpLookup() {
+  const form = $("[data-lookup]");
+  const input = $("[data-lookup-input]");
+  const btn = $("[data-lookup-btn]");
+  const box = $("[data-me]");
+  const msg = $("[data-me-msg]");
+  const live = $("[data-me-live]");
+  const ava = $("[data-me-ava]");
+  const FORMATS = [["chess_blitz", "Blitz"], ["chess_rapid", "Rapid"], ["chess_bullet", "Bullet"]];
+  let ctrl = null;
+
+  const state = (s, text = "") => {
+    box.dataset.state = s;
+    msg.textContent = text;
+    live.textContent = text;
+  };
+  const getJSON = async (url, signal) => {
+    const r = await fetch(url, { signal });
+    if (r.status === 404) throw Object.assign(new Error("missing"), { missing: true });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  };
+  const prefill = (u) => {
+    const f = $('input[name="chess_username"]');
+    if (f && !f.value) f.value = u;
+  };
+
+  const render = (p, s, u) => {
+    const shown = (p.url || "").split("/").pop() || p.username || u;
+    $("[data-me-name]").textContent = shown;
+    const country = (p.country || "").split("/").pop();
+    $("[data-me-sub]").textContent = [p.title, p.name, country].filter(Boolean).join(" · ") || "Chess.com member";
+    $("[data-me-ini]").textContent = shown[0].toUpperCase();
+    ava.hidden = true;
+    if (p.avatar) {
+      ava.onload = () => (ava.hidden = false);
+      ava.onerror = () => (ava.hidden = true);
+      ava.src = p.avatar;
+    }
+    let best = null;
+    for (const [key, label] of FORMATS) {
+      const f = s[key];
+      $(`[data-me-r="${key}"]`).textContent = f && f.last ? f.last.rating : "–";
+      const rec = f && f.record;
+      const games = rec ? rec.win + rec.loss + rec.draw : 0;
+      if (games && (!best || games > best.games)) best = { label, rec, games };
+    }
+    const n = (v) => Number(v).toLocaleString("en-US");
+    $("[data-me-rec]").textContent = best
+      ? `${best.label} record: ${n(best.rec.win)} wins · ${n(best.rec.loss)} losses · ${n(best.rec.draw)} draws`
+      : "No rated live games yet.";
+    const rating = (s.chess_blitz && s.chess_blitz.last) || (s.chess_rapid && s.chess_rapid.last) || (s.chess_bullet && s.chess_bullet.last);
+    const you = $(".pl-you");
+    you.querySelector(".pl-name").textContent = shown.length > 12 ? shown.slice(0, 11) + "…" : shown;
+    you.querySelector(".ava").textContent = shown[0].toUpperCase();
+    if (rating) you.querySelector(".pl-r").textContent = rating.rating;
+    prefill(shown);
+    box.dataset.state = "found";
+    msg.textContent = "";
+    live.textContent = `Found ${shown}. This is you? You’re ready to play.`;
+  };
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const u = input.value.trim().toLowerCase();
+    if (!/^[a-z0-9_-]{3,25}$/.test(u)) {
+      state("missing", "Chess.com usernames are 3 to 25 letters, numbers, dashes, or underscores.");
+      input.focus();
+      return;
+    }
+    if (ctrl) ctrl.abort();
+    const mine = (ctrl = new AbortController());
+    const timer = setTimeout(() => mine.abort(), 7000);
+    state("loading");
+    live.textContent = `Looking up ${u} on Chess.com…`;
+    btn.disabled = true;
+    try {
+      const [p, s] = await Promise.all([
+        getJSON(`https://api.chess.com/pub/player/${u}`, mine.signal),
+        getJSON(`https://api.chess.com/pub/player/${u}/stats`, mine.signal).catch((err) => {
+          if (err.name === "AbortError") throw err;
+          return {};
+        }),
+      ]);
+      if (mine === ctrl) render(p, s, u);
+    } catch (err) {
+      if (mine !== ctrl) return;
+      if (err.missing) state("missing", `No Chess.com account found for “${u}”. Check the spelling and try again.`);
+      else {
+        state("error", "We couldn’t reach Chess.com just now. You can still save your spot with your username.");
+        prefill(u);
+      }
+    } finally {
+      clearTimeout(timer);
+      if (mine === ctrl) btn.disabled = false;
+    }
   });
 }
 
@@ -1118,6 +1234,7 @@ swipe.classList.add("is-idle");
 setThumb(0);
 setUpScroll();
 setUpWaitlist();
+setUpLookup();
 setUpMathRolls();
 setUpHours();
 seedFeed();
@@ -1129,7 +1246,6 @@ Promise.all([loadPieces(), document.fonts ? document.fonts.ready : null]).then((
   setUpStory();
   placeGlow();
   const now = performance.now();
-  for (const t of tiles) t.board.frame(now);
   slipBoard.frame(now);
   storyBoard.frame(now);
   new IntersectionObserver((e) => (heroVisible = e[0].isIntersecting)).observe(hero);
