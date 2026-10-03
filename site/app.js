@@ -249,7 +249,7 @@ function layoutWall() {
   const tab = innerWidth >= 720;
   const g = {
     w, h,
-    tw: desk ? 248 : tab ? 224 : 184,
+    tw: desk ? 248 : tab ? 224 : 200,
     tb: desk ? 88 : tab ? 80 : 64,
     gap: desk ? 16 : tab ? 16 : 8,
     time: desk || tab,
@@ -266,6 +266,7 @@ function layoutWall() {
   const x0 = Math.round((w - (n * pitchX - g.gap)) / 2);
   const rows = Math.ceil(h / pitchY) + 2;
   wallEl.textContent = "";
+  wallEl.classList.toggle("compact", !g.time);
   wallEl.style.setProperty("--tw", g.tw + "px");
   wallEl.style.setProperty("--th", g.th + "px");
   cols = [];
@@ -454,11 +455,13 @@ function commit() {
   swipe.classList.add("is-done");
   setThumb(thumbMax());
   if (navigator.vibrate) navigator.vibrate(12);
+  sweep();
+  if (MOTION) G.to(wallEl, { scale: 1.06, duration: 1.6, ease: "expo.out" });
   chips.forEach((c) => (c.disabled = true));
   $("[data-next]").disabled = true;
   $("[data-slip-title]").textContent = `Matched with ${S.opp.n}`;
   $("[data-win-label]").textContent = "Pot locked in escrow";
-  statusEl.innerHTML = "<b>Live</b> · your move";
+  statusEl.innerHTML = "<b>Live</b> · Move 1 · You";
   const pot = S.stake * 2;
   const clocks = [300, 300];
   const moves = HERO_GAME.m.split(",");
@@ -473,7 +476,7 @@ function commit() {
     clkW.classList.toggle("on", ply % 2 === 0 && ply < moves.length);
     clkB.classList.toggle("on", ply % 2 === 1 && ply < moves.length);
     if (ply < moves.length) {
-      statusEl.innerHTML = `<b>Live</b> · move ${Math.ceil((ply + 1) / 2)} · ${ply % 2 ? S.opp.n + " to move" : "your move"}`;
+      statusEl.innerHTML = `<b>Live</b> · Move ${Math.ceil((ply + 1) / 2)} · ${ply % 2 ? S.opp.n : "You"}`;
       later(step, ply % 2 ? 560 : 420);
     } else later(() => won(pot), 380);
   };
@@ -491,13 +494,23 @@ function won(pot) {
   clkB.classList.remove("on");
   $("[data-slip-title]").textContent = "You won";
   $("[data-win-label]").textContent = "Paid in USDC";
-  statusEl.innerHTML = "<b>Checkmate.</b> Smothered mate, Nd6#";
+  statusEl.innerHTML = "<b>Checkmate</b> · Nd6#";
   winRoll.set("+" + money(pot), { from0: true });
-  pushFeed(`<b>You</b> won <em>${money(pot)}</em> · vs ${S.opp.n} · ${S.opp.c}`, "is-you");
+  sweep();
+  if (MOTION) G.fromTo(glow, { opacity: 1 }, { opacity: 0.55, duration: 0.25, yoyo: true, repeat: 3, ease: "power1.inOut" });
+  const msg = `<b>You</b> won <em>${money(pot)}</em> · vs ${S.opp.n} · ${S.opp.c}`;
+  later(() => fly("+" + money(pot), $("[data-roll-win]")).then(() => pushFeed(msg, "is-you")), 650);
   later(resetSlip, 9000);
 }
 
+function sweep() {
+  slip.classList.remove("is-sweep");
+  void slip.offsetWidth;
+  slip.classList.add("is-sweep");
+}
+
 function resetSlip() {
+  if (MOTION) G.to(wallEl, { scale: 1, duration: 1.4, ease: "expo.out" });
   S.timers.forEach(clearTimeout);
   S.timers = [];
   S.state = "idle";
@@ -584,6 +597,7 @@ function frame(now) {
     }
   }
   slipBoard.frame(now);
+  storyBoard.frame(now);
   requestAnimationFrame(frame);
 }
 function run() {
@@ -593,51 +607,306 @@ function run() {
   requestAnimationFrame(frame);
 }
 
-/* ---------- Sections ---------- */
-function staticMate(canvas) {
-  const b = new Board(canvas);
-  b.size();
-  HERO_GAME.m.split(",").forEach((m) => b.play(m, 0));
-  b.markMate("b");
-  b.frame(performance.now());
-  return b;
+/* ---------- Motion: smooth scroll, intro, scroll choreography ---------- */
+const G = window.gsap;
+const ST = window.ScrollTrigger;
+const MOTION = !!(G && ST) && !RM;
+if (G && ST) G.registerPlugin(ST);
+const cam = $("[data-cam]");
+const glow = $("[data-glow]");
+let lenis = null;
+
+function setUpScroll() {
+  if (MOTION && window.Lenis) {
+    lenis = new window.Lenis({ lerp: 0.085, wheelMultiplier: 0.95 });
+    lenis.on("scroll", ST.update);
+    G.ticker.add((t) => lenis.raf(t * 1000));
+    G.ticker.lagSmoothing(0);
+    window.__lenis = lenis;
+  }
+  $$('a[href^="#"]').forEach((a) =>
+    a.addEventListener("click", (e) => {
+      const id = a.getAttribute("href");
+      const target = id === "#top" ? 0 : $(id);
+      if (target == null) return;
+      e.preventDefault();
+      if (lenis) lenis.scrollTo(target, { offset: target === 0 ? 0 : -64, duration: 1.6 });
+      else if (target === 0) scrollTo({ top: 0 });
+      else target.scrollIntoView({ behavior: RM ? "auto" : "smooth" });
+    })
+  );
 }
 
-function typeLink(vis) {
-  const out = vis.querySelector("[data-type]");
-  const word = out.dataset.type;
-  if (RM) {
-    out.textContent = word;
-    vis.classList.add("is-linked");
+function splitWords(root) {
+  const out = [];
+  [...root.childNodes].forEach((n) => {
+    if (n.nodeType === 3) {
+      const frag = document.createDocumentFragment();
+      n.textContent.split(/(\s+)/).forEach((part) => {
+        if (!part) return;
+        if (/^\s+$/.test(part)) return frag.append(document.createTextNode(" "));
+        const w = el("span", "hw");
+        const inner = el("span", "hwi", part);
+        w.append(inner);
+        frag.append(w);
+        out.push(inner);
+      });
+      n.replaceWith(frag);
+    } else if (n.nodeType === 1) out.push(...splitWords(n));
+  });
+  return out;
+}
+
+function placeGlow() {
+  const h = glow.parentElement.getBoundingClientRect();
+  const s = slip.getBoundingClientRect();
+  glow.style.transform = `translate3d(${s.left - h.left + s.width / 2}px,${s.top - h.top + s.height / 2}px,0)`;
+}
+
+function intro() {
+  const root = document.documentElement;
+  if (!MOTION) {
+    root.classList.remove("intro");
     return;
   }
-  let i = 0;
-  const tick = () => {
-    out.textContent = word.slice(0, ++i);
-    if (i < word.length) setTimeout(tick, 90 + Math.random() * 60);
-    else setTimeout(() => vis.classList.add("is-linked"), 350);
-  };
-  setTimeout(tick, 500);
+  const plane = wallEl;
+  const words = splitWords($("#hero-h"));
+  const slipC = { x: 0, y: 0 };
+  const sr = slip.getBoundingClientRect();
+  slipC.x = sr.left + sr.width / 2;
+  slipC.y = sr.top + sr.height / 2;
+  const tileEls = tiles.map((t) => t.el);
+  const delays = new Map(
+    tileEls.map((t) => {
+      const r = t.getBoundingClientRect();
+      return [t, Math.hypot(r.left + r.width / 2 - slipC.x, r.top + r.height / 2 - slipC.y)];
+    })
+  );
+  const tl = G.timeline({ defaults: { ease: "expo.out" }, onComplete: () => root.classList.remove("intro") });
+  tl.set([".wall", ".slip-glow", "#hero-h"], { opacity: 1 }, 0)
+    .fromTo(plane, { rotationX: 62, rotationZ: -20, scale: 1.3, yPercent: 6 }, { rotationX: 30, rotationZ: -9, scale: 1, yPercent: 0, duration: 2.8 }, 0)
+    .fromTo(tileEls, { opacity: 0 }, { opacity: 1, duration: 0.9, ease: "power2.out", stagger: (i, t) => delays.get(t) / 1500 }, 0.1)
+    .fromTo(".eyebrow", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 1 }, 0.2)
+    .fromTo(words, { yPercent: 118 }, { yPercent: 0, duration: 1.3, stagger: 0.05 }, 0.28)
+    .fromTo(slip, { opacity: 0, y: 72, rotationX: 16, scale: 0.94, transformPerspective: 1200, transformOrigin: "50% 100%" }, { opacity: 1, y: 0, rotationX: 0, scale: 1, duration: 1.6, clearProps: "transform" }, 0.5)
+    .fromTo(glow, { opacity: 0 }, { opacity: 1, duration: 2.2, ease: "power2.out" }, 0.8)
+    .add(() => {
+      winRoll.set(money(S.stake * 2), { from0: true });
+      slip.classList.remove("is-sweep");
+      void slip.offsetWidth;
+      slip.classList.add("is-sweep");
+    }, 1.0)
+    .fromTo([".lede", ".ctas", ".beta"], { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 1.1, stagger: 0.08 }, 0.85)
+    .fromTo(".feed", { opacity: 0, yPercent: 100 }, { opacity: 1, yPercent: 0, duration: 1.2 }, 1.1);
 }
 
-function setUpReveals() {
-  const mathRolls = $$("[data-roll-math]").map((n) => new Roll(n));
-  const io = new IntersectionObserver(
-    (entries) => {
-      for (const e of entries) {
-        if (!e.isIntersecting) continue;
-        const n = e.target;
-        n.classList.add("in");
-        io.unobserve(n);
-        const link = n.querySelector(".vis-link");
-        if (link) typeLink(link);
-        if (n.matches("[data-math-row]"))
-          mathRolls.forEach((r, i) => r.set("$" + r.node.dataset.rollMath, { from0: true, delay: 150 + i * 180 }));
-      }
+function setUpChoreography() {
+  if (!MOTION) return;
+  if (matchMedia("(pointer: fine)").matches) {
+    const rx = G.quickTo(cam, "rotationX", { duration: 1.4, ease: "power3.out" });
+    const ry = G.quickTo(cam, "rotationY", { duration: 1.4, ease: "power3.out" });
+    hero.addEventListener("pointermove", (e) => {
+      ry((e.clientX / innerWidth - 0.5) * 7);
+      rx(-(e.clientY / innerHeight - 0.5) * 5);
+    });
+  }
+  const exit = { trigger: hero, start: "top top", end: "bottom top", scrub: true };
+  G.to(cam, { z: -360, yPercent: -8, ease: "none", scrollTrigger: exit });
+  G.to(".hero-in", { y: -96, ease: "none", scrollTrigger: { ...exit } });
+  G.to(".wall-shade", { opacity: 0.4, ease: "none", scrollTrigger: { ...exit } });
+
+  $$(".reveal").forEach((n) => n.classList.remove("reveal"));
+  G.from(".hours-head > *", { opacity: 0, y: 40, duration: 1.2, ease: "expo.out", stagger: 0.1, scrollTrigger: { trigger: ".hours", start: "top 75%" } });
+  G.from(".sec-math .h2", { opacity: 0, y: 40, duration: 1.2, ease: "expo.out", scrollTrigger: { trigger: ".sec-math", start: "top 75%" } });
+  G.from(".m-cell", { opacity: 0, y: 64, duration: 1.3, ease: "expo.out", stagger: 0.12, scrollTrigger: { trigger: ".math", start: "top 80%" } });
+  G.from([".math-note", ".token-line"], { opacity: 0, y: 24, duration: 1, ease: "expo.out", stagger: 0.1, scrollTrigger: { trigger: ".math-note", start: "top 90%" } });
+  G.from("#friends .h2, #friends .sub", { opacity: 0, y: 40, duration: 1.2, ease: "expo.out", stagger: 0.1, scrollTrigger: { trigger: "#friends", start: "top 75%" } });
+  G.from(".fr", { opacity: 0, y: 80, rotationX: 14, transformPerspective: 1200, transformOrigin: "50% 0%", duration: 1.4, ease: "expo.out", stagger: 0.12, scrollTrigger: { trigger: ".friends", start: "top 82%" } });
+  G.from(".share-card", { rotation: -14, y: 24, scale: 0.9, duration: 1.6, ease: "elastic.out(1, 0.6)", scrollTrigger: { trigger: ".friends", start: "top 70%" } });
+  G.from(".follow li", { opacity: 0, x: 32, duration: 1, ease: "expo.out", stagger: 0.1, scrollTrigger: { trigger: ".friends", start: "top 70%" } });
+  G.from(".join-copy > *, .join-card", { opacity: 0, y: 48, duration: 1.3, ease: "expo.out", stagger: 0.1, scrollTrigger: { trigger: "#join", start: "top 75%" } });
+}
+
+function setUpMathRolls() {
+  const rolls = $$("[data-roll-math]").map((n) => new Roll(n));
+  const row = $("[data-math-row]");
+  new IntersectionObserver(
+    (entries, io) => {
+      if (!entries[0].isIntersecting) return;
+      io.disconnect();
+      rolls.forEach((r, i) => r.set("$" + r.node.dataset.rollMath, { from0: true, delay: 250 + i * 200 }));
     },
-    { threshold: 0.25 }
-  );
-  $$(".reveal").forEach((n) => io.observe(n));
+    { threshold: 0.4 }
+  ).observe(row);
+}
+
+/* ---------- World clocks ---------- */
+const CITIES = [
+  ["New York", "America/New_York"], ["São Paulo", "America/Sao_Paulo"], ["Lisbon", "Europe/Lisbon"], ["Lagos", "Africa/Lagos"],
+  ["Berlin", "Europe/Berlin"], ["Istanbul", "Europe/Istanbul"], ["Bangkok", "Asia/Bangkok"], ["Seoul", "Asia/Seoul"],
+  ["Tokyo", "Asia/Tokyo"], ["Sydney", "Australia/Sydney"], ["Honolulu", "Pacific/Honolulu"], ["Los Angeles", "America/Los_Angeles"],
+  ["Mexico City", "America/Mexico_City"],
+];
+function setUpHours() {
+  const track = $("[data-hours]");
+  const items = CITIES.map(([name, tz]) => {
+    const node = el("div", "hr");
+    node.innerHTML = `<div class="hr-time"><span class="hr-t roll num" data-max="12:00">0:00</span><span class="hr-ap"></span></div><div class="hr-c"><span>${name}</span></div>`;
+    track.append(node);
+    const fmt = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", hourCycle: "h12", timeZone: tz });
+    const h24 = new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone: tz });
+    return { node, roll: new Roll(node.querySelector(".hr-t")), ap: node.querySelector(".hr-ap"), city: node.querySelector(".hr-c"), fmt, h24, tag: null };
+  });
+  let shown = false;
+  const paint = (animate) => {
+    const now = new Date();
+    for (const it of items) {
+      const parts = Object.fromEntries(it.fmt.formatToParts(now).map((p) => [p.type, p.value]));
+      const h = Number(it.h24.format(now)) % 24;
+      const t = `${parts.hour}:${parts.minute}`;
+      if (t !== it.t) {
+        it.t = t;
+        it.roll.set(t, animate ? { from0: !shown } : { instant: true });
+      }
+      it.ap.textContent = (parts.dayPeriod || "").toUpperCase();
+      const morning = h >= 5 && h < 12;
+      it.node.classList.toggle("night", h < 6 || h >= 21);
+      if (morning && !it.tag) {
+        it.tag = el("i", "gm", "gm");
+        it.city.append(it.tag);
+      } else if (!morning && it.tag) {
+        it.tag.remove();
+        it.tag = null;
+      }
+    }
+  };
+  paint(false);
+  new IntersectionObserver(
+    (entries, io) => {
+      if (!entries[0].isIntersecting) return;
+      io.disconnect();
+      items.forEach((it) => (it.t = null));
+      paint(true);
+      shown = true;
+    },
+    { threshold: 0.3 }
+  ).observe(track);
+  setInterval(() => paint(true), 10000);
+  if (MOTION)
+    G.fromTo(
+      track,
+      { x: () => innerWidth * 0.15 },
+      { x: () => -(track.scrollWidth - innerWidth * 0.85), ease: "none", scrollTrigger: { trigger: ".hours", start: "top bottom", end: "bottom top", scrub: 0.6, invalidateOnRefresh: true } }
+    );
+}
+
+/* ---------- How it works: one ticket, scrubbed by scroll ---------- */
+const storyBoard = new Board($("[data-story-board]"));
+function setUpStory() {
+  const pin = $("[data-story]");
+  const steps = $$(".story-steps li");
+  const screens = $$(".tk-s");
+  const typeEl = $("[data-story-type]");
+  const rows = $$(".tk-row");
+  const sw = $("[data-tk-swipe]");
+  const bar = $("[data-story-bar]");
+  const roll = new Roll($("[data-story-roll]"));
+  const pay = $("[data-story-roll]");
+  const stateEl = $("[data-tk-state]");
+  const subEl = $("[data-tk-sub]");
+  const moves = HERO_GAME.m.split(",");
+  const word = "rob_nyc";
+  const titles = ["Link Chess.com", "Bet in one swipe", "Play and get paid"];
+  const clamp = (v) => Math.max(0, Math.min(1, v));
+  let step = 0;
+  let ply = 0;
+  let paid = false;
+
+  const show = (n) => {
+    if (n === step) return;
+    const prev = step;
+    step = n;
+    steps.forEach((li, i) => li.classList.toggle("is-on", i === n));
+    $("[data-tk-title]").textContent = titles[n];
+    $("[data-tk-count]").textContent = n + 1 + " / 3";
+    screens.forEach((s, i) => {
+      s.classList.toggle("is-on", i === n);
+      if (!G) return;
+      const dir = n > prev ? 1 : -1;
+      if (i === n) G.fromTo(s, { autoAlpha: 0, y: 32 * dir }, { autoAlpha: 1, y: 0, duration: RM ? 0 : 0.7, ease: "expo.out", overwrite: true });
+      else if (i === prev) G.to(s, { autoAlpha: 0, y: -32 * dir, duration: RM ? 0 : 0.35, ease: "power2.in", overwrite: true });
+      else G.set(s, { autoAlpha: 0 });
+    });
+  };
+
+  const playTo = (t) => {
+    if (t === ply) return;
+    if (t === ply + 1) storyBoard.play(moves[ply], RM ? 0 : 280);
+    else {
+      storyBoard.reset();
+      for (let i = 0; i < t; i++) storyBoard.play(moves[i], 0);
+    }
+    ply = t;
+    const done = ply === moves.length;
+    stateEl.textContent = done ? "Checkmate · Nd6#" : ply ? `Live · Move ${Math.ceil((ply + 1) / 2)}` : "Matched with Min";
+    if (done && !paid) {
+      paid = true;
+      storyBoard.markMate("b");
+      pay.classList.add("is-paid");
+      roll.set("+$40.00", { from0: true });
+      subEl.textContent = "Paid in USDC";
+    } else if (!done && paid) {
+      paid = false;
+      pay.classList.remove("is-paid");
+      roll.set("$0.00", { instant: true });
+      subEl.textContent = "Pot $40 in escrow";
+    }
+  };
+
+  const update = (p) => {
+    const n = p < 0.32 ? 0 : p < 0.64 ? 1 : 2;
+    show(n);
+    const local = clamp(n === 0 ? p / 0.32 : n === 1 ? (p - 0.32) / 0.32 : (p - 0.64) / 0.36);
+    bar.style.transform = `scaleY(${p.toFixed(4)})`;
+    typeEl.textContent = word.slice(0, n > 0 ? word.length : Math.floor(clamp(local / 0.45) * word.length));
+    rows.forEach((r, i) => r.classList.toggle("on", n > 0 || local > 0.5 + i * 0.11));
+    const q = n > 1 ? 1 : n < 1 ? 0 : clamp((local - 0.15) / 0.6);
+    sw.style.setProperty("--q", q.toFixed(4));
+    sw.classList.toggle("is-done", q >= 1);
+    playTo(n < 2 ? 0 : Math.round(clamp(local / 0.72) * moves.length));
+  };
+
+  storyBoard.size();
+  update(0);
+  if (ST && G) {
+    ST.create({
+      trigger: pin,
+      start: "top top",
+      end: () => "+=" + Math.round(innerHeight * 2.6),
+      pin: true,
+      anticipatePin: 1,
+      onUpdate: (self) => update(self.progress),
+    });
+  }
+}
+
+/* ---------- Payout flight ---------- */
+function fly(text, from) {
+  const f = feedEl.getBoundingClientRect();
+  if (!MOTION || f.top > innerHeight || f.bottom < 0) return Promise.resolve();
+  const a = from.getBoundingClientRect();
+  const chip = el("span", "fly", text);
+  document.body.append(chip);
+  const x1 = f.left + 16;
+  const y1 = f.top + 10;
+  G.set(chip, { x: a.left, y: a.top + a.height / 2 - 18, scale: 1.6, opacity: 0, transformOrigin: "0% 50%" });
+  return new Promise((done) => {
+    G.timeline({ onComplete: () => (chip.remove(), done()) })
+      .to(chip, { opacity: 1, scale: 1, duration: 0.35, ease: "expo.out" })
+      .to(chip, { x: x1, duration: 1.0, ease: "power3.inOut" }, 0.3)
+      .to(chip, { y: y1, duration: 1.0, ease: "back.in(1.2)" }, 0.3)
+      .to(chip, { scale: 0.8, opacity: 0, duration: 0.25, ease: "power2.in" }, 1.1);
+  });
 }
 
 /* ---------- Waitlist ---------- */
@@ -782,26 +1051,44 @@ addEventListener(
   { passive: true }
 );
 
+function staticMate(canvas) {
+  const b = new Board(canvas);
+  b.size();
+  HERO_GAME.m.split(",").forEach((m) => b.play(m, 0));
+  b.markMate("b");
+  b.frame(performance.now());
+  return b;
+}
+
 renderOpp();
 renderStake(false);
+if (MOTION) winRoll.set("$0.00", { instant: true });
 paintTimes();
 setInterval(paintTimes, 15000);
 swipe.classList.add("is-idle");
 setThumb(0);
-setUpReveals();
+$$(".reveal").forEach((n) => n.classList.remove("reveal"));
+setUpScroll();
 setUpWaitlist();
+setUpMathRolls();
+setUpHours();
 seedFeed();
 
 Promise.all([loadPieces(), document.fonts ? document.fonts.ready : null]).then(() => {
   layoutWall();
   slipBoard.size();
-  staticMate($("[data-mate-board]"));
   staticMate($("[data-share-board]"));
+  setUpStory();
+  placeGlow();
   const now = performance.now();
   for (const t of tiles) t.board.frame(now);
   slipBoard.frame(now);
+  storyBoard.frame(now);
   new IntersectionObserver((e) => (heroVisible = e[0].isIntersecting)).observe(hero);
   run();
+  intro();
+  setUpChoreography();
+  if (ST) ST.refresh();
 });
 
 let lastW = innerWidth;
@@ -810,10 +1097,12 @@ addEventListener("resize", () => {
   clearTimeout(rz);
   rz = setTimeout(() => {
     slipBoard.size();
+    storyBoard.size();
     setThumb(S.state === "idle" ? 0 : thumbMax());
     if (innerWidth !== lastW || !geo || Math.abs(wallEl.clientHeight - geo.h) > 160) {
       lastW = innerWidth;
       layoutWall();
     }
+    placeGlow();
   }, 150);
 });

@@ -28,6 +28,15 @@
 <link rel="modulepreload" href="pieces.js">
 <link rel="modulepreload" href="games.js">
 <link rel="stylesheet" href="styles.css">
+<script>
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    document.documentElement.classList.add("intro");
+    setTimeout(function () { document.documentElement.classList.remove("intro"); }, 4000);
+  }
+</script>
+<script src="vendor/gsap.min.js" defer></script>
+<script src="vendor/ScrollTrigger.min.js" defer></script>
+<script src="vendor/lenis.min.js" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -48,11 +57,12 @@
 
 <main id="main">
 <section class="hero" id="top" aria-labelledby="hero-h">
-  <div class="wall" data-wall aria-hidden="true"></div>
+  <div class="wall" aria-hidden="true"><div class="wall-cam" data-cam><div class="wall-plane" data-wall></div></div></div>
   <div class="wall-shade" aria-hidden="true"></div>
   <p class="wall-tag" aria-hidden="true"><span class="dot-live"></span>Preview · sample games</p>
 
   <div class="hero-in">
+    <div class="slip-glow" data-glow aria-hidden="true"></div>
     <p class="eyebrow">
       <span class="eb-t" data-here>3:00 AM</span><span class="eb-l">here</span>
       <span class="eb-sep" aria-hidden="true"></span>
@@ -64,6 +74,7 @@
       <a class="btn btn-light" href="#join">Join the waitlist</a>
       <a class="btn btn-ghost" href="#how">How it works</a>
     </div>
+    <p class="beta">Beta in October. gm.</p>
 
     <div class="slip" data-slip data-state="idle" aria-labelledby="slip-h">
       <div class="slip-head">
@@ -129,42 +140,70 @@
   </div>
 </section>
 
-<section class="sec" id="how" aria-labelledby="how-h">
-  <div class="wrap">
-    <h2 class="h2" id="how-h">How it works</h2>
-    <p class="sub">Three steps. The bet takes one swipe.</p>
-    <div class="steps">
-      <article class="step reveal">
-        <div class="vis vis-link" aria-hidden="true">
-          <div class="field"><span class="field-pre">chess.com/member/</span><span class="field-val" data-type="rob_nyc"></span><span class="caret"></span></div>
-          <div class="linked">
-            <span class="ok"><svg viewBox="0 0 20 20" width="12" height="12"><path d="M4.5 10.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <span>Linked</span><span class="rating num">Blitz 1532</span>
+<section class="hours" aria-labelledby="hours-h">
+  <div class="wrap hours-head">
+    <h2 class="h2" id="hours-h">Someone is always up for a game.</h2>
+    <p class="sub">Real local times, right now. Where it says gm, it’s morning.</p>
+  </div>
+  <div class="hours-track" data-hours aria-hidden="true"></div>
+</section>
+
+<section class="story" id="how" aria-labelledby="how-h">
+  <div class="story-pin" data-story>
+    <div class="wrap story-in">
+      <div class="story-copy">
+        <h2 class="h2" id="how-h">How it works</h2>
+        <div class="story-rail" aria-hidden="true"><i data-story-bar></i></div>
+        <ol class="story-steps">
+          <li class="is-on" data-step="0"><h3>Link.</h3><p>Connect your Chess.com account once. Your username and rating come with you.</p></li>
+          <li data-step="1"><h3>Bet.</h3><p>Pick a stake and swipe once. We match you with a player at your rating, anywhere in the world.</p></li>
+          <li data-step="2"><h3>Play and win.</h3><p>Play on Chess.com, with its ratings and cheat detection. Win, and the pot lands in your wallet about a minute after the game ends.</p></li>
+        </ol>
+      </div>
+
+      <div class="story-stage" aria-hidden="true">
+        <div class="ticket">
+          <div class="tk-head">
+            <span class="tk-title"><span class="tk-dot"></span><span data-tk-title>Link Chess.com</span></span>
+            <span class="tk-count num" data-tk-count>1 / 3</span>
+          </div>
+          <div class="tk-screens">
+            <div class="tk-s is-on" data-s="0">
+              <p class="tk-k">Chess.com username</p>
+              <div class="tk-field"><span class="field-pre">chess.com/member/</span><span class="field-val" data-story-type></span><span class="caret"></span></div>
+              <div class="tk-rows" data-linked>
+                <div class="tk-row"><span class="ok"><svg viewBox="0 0 20 20" width="12" height="12"><path d="M4.5 10.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Account linked</span><span class="tk-v">rob_nyc</span></div>
+                <div class="tk-row"><span class="tk-i">B</span><span>Blitz rating</span><span class="tk-v num">1532</span></div>
+                <div class="tk-row"><span class="tk-i">R</span><span>Rapid rating</span><span class="tk-v num">1601</span></div>
+                <div class="tk-row"><span class="tk-i">F</span><span>Fair play</span><span class="tk-v">Clear</span></div>
+              </div>
+            </div>
+            <div class="tk-s" data-s="1">
+              <p class="tk-k">Stake</p>
+              <div class="tk-chips"><span>$5</span><span>$10</span><span class="on">$20</span><span>$50</span></div>
+              <p class="tk-k tk-k2">Win</p>
+              <p class="tk-big num">$40.00</p>
+              <p class="tk-math num">Stake $20 · $1 fee · Win $40</p>
+              <div class="tk-swipe" data-tk-swipe>
+                <span class="tk-fill"></span>
+                <span class="tk-label">Swipe to bet $20</span>
+                <span class="tk-done">Matched with Min · $40 pot locked</span>
+                <span class="tk-thumb"><svg viewBox="0 0 20 20" width="20" height="20"><path d="M4 10h11m-4.5-4.5L15 10l-4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              </div>
+            </div>
+            <div class="tk-s" data-s="2">
+              <div class="tk-game">
+                <canvas class="tk-board" data-story-board></canvas>
+                <div class="tk-res">
+                  <p class="tk-k" data-tk-state>Live · Move 1</p>
+                  <p class="tk-pay roll num" data-story-roll data-max="+$40.00">$0.00</p>
+                  <p class="tk-sub" data-tk-sub>Pot $40 in escrow</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <h3>Link.</h3>
-        <p>Connect your Chess.com account once. Your username and rating come with you.</p>
-      </article>
-      <article class="step reveal">
-        <div class="vis vis-bet" aria-hidden="true">
-          <div class="mini-chips"><span>$5</span><span>$10</span><span class="on">$20</span><span>$50</span></div>
-          <div class="mini-swipe"><span class="mini-thumb"></span><span class="mini-label">Swipe to bet $20</span></div>
-        </div>
-        <h3>Bet.</h3>
-        <p>Pick a stake and swipe once. We match you with a player at your rating, anywhere in the world.</p>
-      </article>
-      <article class="step reveal">
-        <div class="vis vis-win" aria-hidden="true">
-          <canvas class="mini-board" data-mate-board></canvas>
-          <div class="won">
-            <span class="won-l">Checkmate</span>
-            <span class="won-n num">+$40.00</span>
-            <span class="won-s">Paid in USDC</span>
-          </div>
-        </div>
-        <h3>Play and win.</h3>
-        <p>Play on Chess.com, with its ratings and cheat detection. Win, and the pot lands in your wallet about a minute after the game ends.</p>
-      </article>
+      </div>
     </div>
   </div>
 </section>
