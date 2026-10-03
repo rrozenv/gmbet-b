@@ -6,7 +6,7 @@
 <style>
   html, body { width: 1200px; height: 630px; overflow: hidden; }
   body { position: relative; }
-  .og-wall { position: absolute; inset: 0; --tw: 248px; --th: 160px; }
+  .og-wall { position: absolute; inset: -80px -160px -120px 0; --tw: 248px; --th: 160px; transform: perspective(1500px) rotateX(28deg) rotateZ(-9deg); transform-origin: 70% 60%; }
   .og-wall .tile { --tb: 88px; }
   .og-shade { position: absolute; inset: 0; background:
     linear-gradient(90deg, rgba(7,8,10,0.98) 0%, rgba(7,8,10,0.96) 40%, rgba(7,8,10,0.55) 58%, rgba(7,8,10,0.1) 80%),
@@ -41,16 +41,16 @@
   await document.fonts.ready;
   const wall = document.querySelector("[data-wall]");
   let k = 0;
-  for (let c = 0; c < 3; c++) {
-    for (let r = 0; r < 4; r++) {
+  for (let c = 0; c < 4; c++) {
+    for (let r = 0; r < 5; r++) {
       const p = people[k % people.length];
       const g = WALL_GAMES[(k * 5) % WALL_GAMES.length];
       const moves = g.m.split(",");
-      const done = k === 5;
+      const done = k === 6 || k === 13;
       const upto = done ? moves.length : Math.max(4, Math.floor(moves.length * (0.35 + (k % 4) * 0.12)));
       const t = document.createElement("div");
       t.className = "tile" + (done ? " is-won" : "");
-      t.style.transform = `translate(${600 + c * 264}px, ${-72 + r * 176 + (c % 2) * 72}px)`;
+      t.style.transform = `translate(${560 + c * 264}px, ${-40 + r * 176 + (c % 2) * 72}px)`;
       const stake = stakes[k % stakes.length];
       t.innerHTML = `<div class="t-top"><span class="t-st"><span class="dot-live t-dot"></span>${done ? "Checkmate" : "Live"}</span><span class="t-fmt">${fmts[k % 4]}</span><span class="t-clk">${done ? "" : (1 + (k % 4)) + ":" + String(10 + k * 7 % 50).padStart(2, "0")}</span></div><canvas class="t-board"></canvas><div class="t-ps"><div class="t-p b"><span class="t-n">${p[3]}</span><span class="t-r">${p[5]}</span><span class="t-c">${p[4]}</span></div><div class="t-p w${done ? "" : " turn"}"><span class="t-n">${p[0]}</span><span class="t-r">${p[2]}</span><span class="t-c">${p[1]}</span></div></div><div class="t-foot"><span class="t-stake">${done ? p[0] + " won" : "Stake $" + stake}</span><span class="t-win">${done ? "+$" + stake * 2 : "Win $" + stake * 2}</span></div>`;
       wall.append(t);

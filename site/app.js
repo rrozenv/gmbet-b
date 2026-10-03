@@ -497,6 +497,7 @@ function won(pot) {
   statusEl.innerHTML = "<b>Checkmate</b> · Nd6#";
   winRoll.set("+" + money(pot), { from0: true });
   sweep();
+  ripple();
   if (MOTION) G.fromTo(glow, { opacity: 1 }, { opacity: 0.55, duration: 0.25, yoyo: true, repeat: 3, ease: "power1.inOut" });
   const msg = `<b>You</b> won <em>${money(pot)}</em> · vs ${S.opp.n} · ${S.opp.c}`;
   later(() => fly("+" + money(pot), $("[data-roll-win]")).then(() => pushFeed(msg, "is-you")), 650);
@@ -715,7 +716,11 @@ function setUpChoreography() {
   G.to(".hero-in", { y: -96, ease: "none", scrollTrigger: { ...exit } });
   G.to(".wall-shade", { opacity: 0.4, ease: "none", scrollTrigger: { ...exit } });
 
-  $$(".reveal").forEach((n) => n.classList.remove("reveal"));
+  G.fromTo(
+    ".ticket",
+    { rotationX: 26, y: 96, scale: 0.88, transformPerspective: 1400, transformOrigin: "50% 100%" },
+    { rotationX: 0, y: 0, scale: 1, ease: "none", scrollTrigger: { trigger: ".story", start: "top bottom", end: "top top", scrub: true } }
+  );
   G.from(".hours-head > *", { opacity: 0, y: 40, duration: 1.2, ease: "expo.out", stagger: 0.1, scrollTrigger: { trigger: ".hours", start: "top 75%" } });
   G.from(".sec-math .h2", { opacity: 0, y: 40, duration: 1.2, ease: "expo.out", scrollTrigger: { trigger: ".sec-math", start: "top 75%" } });
   G.from(".m-cell", { opacity: 0, y: 64, duration: 1.3, ease: "expo.out", stagger: 0.12, scrollTrigger: { trigger: ".math", start: "top 80%" } });
@@ -890,6 +895,27 @@ function setUpStory() {
   }
 }
 
+/* ---------- The win ripples across the wall ---------- */
+function ripple() {
+  if (!MOTION) return;
+  const h = hero.getBoundingClientRect();
+  const s = slip.getBoundingClientRect();
+  const cx = s.left + s.width / 2;
+  const cy = s.top + s.height * 0.4;
+  const ring = el("span", "shock");
+  ring.style.left = cx - h.left + "px";
+  ring.style.top = cy - h.top + "px";
+  hero.insertBefore(ring, $(".wall-tag"));
+  G.fromTo(ring, { scale: 0.4, opacity: 1 }, { scale: 9, opacity: 0, duration: 2.2, ease: "power2.out", onComplete: () => ring.remove() });
+  for (const t of tiles) {
+    const r = t.el.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) continue;
+    const d = Math.hypot(r.left + r.width / 2 - cx, r.top + r.height / 2 - cy) / 1100;
+    G.delayedCall(d, () => t.el.classList.add("ripple"));
+    G.delayedCall(d + 0.32, () => t.el.classList.remove("ripple"));
+  }
+}
+
 /* ---------- Payout flight ---------- */
 function fly(text, from) {
   const f = feedEl.getBoundingClientRect();
@@ -899,7 +925,7 @@ function fly(text, from) {
   document.body.append(chip);
   const x1 = f.left + 16;
   const y1 = f.top + 10;
-  G.set(chip, { x: a.left, y: a.top + a.height / 2 - 18, scale: 1.6, opacity: 0, transformOrigin: "0% 50%" });
+  G.set(chip, { x: a.left, y: a.top - 44, scale: 0.6, opacity: 0, transformOrigin: "0% 50%" });
   return new Promise((done) => {
     G.timeline({ onComplete: () => (chip.remove(), done()) })
       .to(chip, { opacity: 1, scale: 1, duration: 0.35, ease: "expo.out" })
@@ -1067,7 +1093,6 @@ paintTimes();
 setInterval(paintTimes, 15000);
 swipe.classList.add("is-idle");
 setThumb(0);
-$$(".reveal").forEach((n) => n.classList.remove("reveal"));
 setUpScroll();
 setUpWaitlist();
 setUpMathRolls();
