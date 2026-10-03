@@ -1261,7 +1261,15 @@ Promise.all([loadPieces(), document.fonts ? document.fonts.ready : null]).then((
   const now = performance.now();
   slipBoard.frame(now);
   storyBoard.frame(now);
-  new IntersectionObserver((e) => (heroVisible = e[0].isIntersecting)).observe(hero);
+  // Off screen, the wall leaves the render tree entirely, so scrolling the rest of the page never pays for it.
+  const wallBox = $(".wall");
+  new IntersectionObserver(
+    (e) => {
+      heroVisible = e[0].isIntersecting;
+      wallBox.style.contentVisibility = heroVisible ? "" : "hidden";
+    },
+    { rootMargin: "200px 0px" }
+  ).observe(hero);
   run();
   intro();
   setUpChoreography();

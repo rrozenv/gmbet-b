@@ -232,7 +232,7 @@ h1 { grid-area: h1; margin: 0 8px 32px; font-size: 44px; line-height: 48px; font
   width: var(--tw); height: var(--th); padding: 12px;
   border-radius: var(--r-m); background: var(--s1); box-shadow: inset 0 0 0 1px var(--line);
   font-size: 11px; line-height: 16px; color: var(--t2);
-  contain: layout paint style;
+  contain: layout style;
   
 }
 .tile::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: rgba(0, 210, 106, 0.05); box-shadow: inset 0 0 0 1px rgba(0, 210, 106, 0.6); opacity: 0; pointer-events: none; transition: opacity 0.5s var(--ease); }
