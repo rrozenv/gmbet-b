@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="/styles.css">
+<style>
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body { position: relative; }
+  .og-wall { position: absolute; inset: 0; --tw: 248px; --th: 160px; }
+  .og-wall .tile { --tb: 88px; }
+  .og-shade { position: absolute; inset: 0; background:
+    linear-gradient(90deg, rgba(7,8,10,0.98) 0%, rgba(7,8,10,0.96) 40%, rgba(7,8,10,0.55) 58%, rgba(7,8,10,0.1) 80%),
+    linear-gradient(180deg, rgba(7,8,10,0.3), transparent 25%, transparent 75%, rgba(7,8,10,0.7)); }
+  .og-copy { position: absolute; left: 72px; top: 64px; width: 600px; }
+  .og-brand { display: flex; align-items: center; gap: 16px; font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }
+  .og-brand .mark { width: 48px; height: 48px; font-size: 22px; border-radius: 12px; }
+  .og-brand .mark::after { width: 6px; height: 6px; right: 6px; bottom: 6px; }
+  .og-h { margin-top: 48px; font-size: 72px; line-height: 72px; font-weight: 600; letter-spacing: -0.045em; text-wrap: balance; }
+  .og-money { position: absolute; left: 72px; bottom: 64px; color: var(--t2); font-size: 24px; line-height: 32px; font-weight: 500; word-spacing: 2px; }
+  .og-money b { color: var(--t1); font-weight: 600; }
+  .og-money em { color: var(--green); font-style: normal; font-weight: 600; }
+  .og-tag { position: absolute; left: 72px; bottom: 112px; display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 8px; background: rgba(7,8,10,0.85); box-shadow: inset 0 0 0 1px var(--line-2); color: var(--t2); font-size: 15px; font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="og-wall" data-wall></div>
+<div class="og-shade"></div>
+<div class="og-copy">
+  <p class="og-brand"><span class="mark">gm</span>GM Bet</p>
+  <p class="og-h">Play anyone in the world at chess. <span class="h-dim">For real money.</span></p>
+</div>
+<p class="og-money"><b>Stake $20</b> · $1 fee · <em>Win $40</em> · USDC</p>
+<p class="og-tag"><span class="dot-live t-dot"></span>Preview</p>
+<script type="module">
+  import { Board, loadPieces } from "/board.js";
+  import { WALL_GAMES } from "/games.js";
+  const people = [["Anna","Lisbon",1812,"Kenji","Osaka",1790],["Sofia","Madrid",1544,"Lucas","Toronto",1561],["Amara","Lagos",2034,"Jonas","Berlin",2011],["Hana","Seoul",1388,"Tom","Sydney",1402],["Elif","Istanbul",1675,"Diego","Lima",1650],["Marta","Warsaw",1921,"Kai","Taipei",1948],["Zoe","Auckland",1290,"Noah","Chicago",1311],["Theo","Dublin",1733,"Yuki","Tokyo",1760],["Grace","Nairobi",1499,"Leo","Miami",1520]];
+  const fmts = ["Blitz 3+0","Blitz 5+0","Rapid 10+0","Bullet 1+0"];
+  const stakes = [20, 50, 10, 20, 5, 20, 10, 50, 20];
+  await loadPieces();
+  await document.fonts.ready;
+  const wall = document.querySelector("[data-wall]");
+  let k = 0;
+  for (let c = 0; c < 3; c++) {
+    for (let r = 0; r < 4; r++) {
+      const p = people[k % people.length];
+      const g = WALL_GAMES[(k * 5) % WALL_GAMES.length];
+      const moves = g.m.split(",");
+      const done = k === 5;
+      const upto = done ? moves.length : Math.max(4, Math.floor(moves.length * (0.35 + (k % 4) * 0.12)));
+      const t = document.createElement("div");
+      t.className = "tile" + (done ? " is-won" : "");
+      t.style.transform = `translate(${600 + c * 264}px, ${-72 + r * 176 + (c % 2) * 72}px)`;
+      const stake = stakes[k % stakes.length];
+      t.innerHTML = `<div class="t-top"><span class="t-st"><span class="dot-live t-dot"></span>${done ? "Checkmate" : "Live"}</span><span class="t-fmt">${fmts[k % 4]}</span><span class="t-clk">${done ? "" : (1 + (k % 4)) + ":" + String(10 + k * 7 % 50).padStart(2, "0")}</span></div><canvas class="t-board"></canvas><div class="t-ps"><div class="t-p b"><span class="t-n">${p[3]}</span><span class="t-r">${p[5]}</span><span class="t-c">${p[4]}</span></div><div class="t-p w${done ? "" : " turn"}"><span class="t-n">${p[0]}</span><span class="t-r">${p[2]}</span><span class="t-c">${p[1]}</span></div></div><div class="t-foot"><span class="t-stake">${done ? p[0] + " won" : "Stake $" + stake}</span><span class="t-win">${done ? "+$" + stake * 2 : "Win $" + stake * 2}</span></div>`;
+      wall.append(t);
+      const b = new Board(t.querySelector("canvas"));
+      b.size();
+      for (let i = 0; i < upto; i++) b.play(moves[i], 0);
+      if (done && g.end === "mate") b.markMate(g.w === "w" ? "b" : "w");
+      b.frame(performance.now());
+      k++;
+    }
+  }
+  document.body.dataset.ready = "1";
+</script>
+</body>
+</html>

@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GM Bet: Play anyone at chess for real money</title>
+<meta name="description" content="Link Chess.com. Swipe once to bet. Get matched with a player at your level, anywhere, any hour. Stakes and payouts in USDC. Beta in October.">
+<meta name="theme-color" content="#07080A">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="https://rrozenv.github.io/gmbet-b/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://rrozenv.github.io/gmbet-b/">
+<meta property="og:title" content="Play anyone in the world at chess. For real money.">
+<meta property="og:description" content="Link Chess.com. Swipe once to bet. Get matched with a player at your level, anywhere, any hour. Win, and you're paid in USDC. Beta in October. gm.">
+<meta property="og:image" content="https://rrozenv.github.io/gmbet-b/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="GM Bet: a wall of live chess matches, each with a stake and a payout.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Play anyone in the world at chess. For real money.">
+<meta name="twitter:description" content="Link Chess.com. Swipe once to bet. Win, and you're paid in USDC. Beta in October. gm.">
+<meta name="twitter:image" content="https://rrozenv.github.io/gmbet-b/og.png">
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preload" href="fonts/geist-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="modulepreload" href="app.js">
+<link rel="modulepreload" href="board.js">
+<link rel="modulepreload" href="pieces.js">
+<link rel="modulepreload" href="games.js">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top" data-top>
+  <div class="top-in">
+    <a class="brand" href="#top" aria-label="GM Bet, home">
+      <span class="mark" aria-hidden="true">gm</span>
+      <span class="brand-name">GM Bet</span>
+    </a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#how">How it works</a>
+      <a href="#friends">Friends</a>
+      <a class="btn btn-light btn-sm" href="#join">Join the waitlist</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<section class="hero" id="top" aria-labelledby="hero-h">
+  <div class="wall" data-wall aria-hidden="true"></div>
+  <div class="wall-shade" aria-hidden="true"></div>
+  <p class="wall-tag" aria-hidden="true"><span class="dot-live"></span>Preview · sample games</p>
+
+  <div class="hero-in">
+    <p class="eyebrow">
+      <span class="eb-t" data-here>3:00 AM</span><span class="eb-l">here</span>
+      <span class="eb-sep" aria-hidden="true"></span>
+      <span class="eb-t" data-there>4:00 PM</span><span class="eb-l" data-there-city>in Seoul</span>
+    </p>
+    <h1 id="hero-h">Play anyone in the world at chess. <span class="h-dim">For real money.</span></h1>
+    <p class="lede">Link your Chess.com account. Swipe once to bet. We match you with a player at your level, day or night. Win, and you’re paid in USDC about a minute after the game ends.</p>
+    <div class="ctas">
+      <a class="btn btn-light" href="#join">Join the waitlist</a>
+      <a class="btn btn-ghost" href="#how">How it works</a>
+    </div>
+
+    <div class="slip" data-slip data-state="idle" aria-labelledby="slip-h">
+      <div class="slip-head">
+        <h2 class="slip-title" id="slip-h"><span class="dot-open" aria-hidden="true"></span><span data-slip-title>Open challenge</span></h2>
+        <span class="tag">Preview</span>
+        <button class="icon-btn" type="button" data-next aria-label="Show another opponent">
+          <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M15.5 7.5A6 6 0 0 0 4.4 6M4.5 12.5A6 6 0 0 0 15.6 14M15.5 3v4.5H11M4.5 17v-4.5H9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+
+      <div class="slip-body">
+        <canvas class="slip-board" data-slip-board role="img" aria-label="Chess board, starting position"></canvas>
+        <div class="slip-info">
+          <div class="pl" data-opp>
+            <span class="ava" data-opp-ava aria-hidden="true">M</span>
+            <span class="pl-name" data-opp-name>Min</span>
+            <span class="pl-r num" data-opp-r>1541</span>
+            <span class="pl-sub" data-opp-sub>Seoul · 4:00 PM</span>
+            <span class="clk num" data-clk-b>5:00</span>
+          </div>
+          <div class="pl pl-you">
+            <span class="ava ava-you" aria-hidden="true">Y</span>
+            <span class="pl-name">You</span>
+            <span class="pl-r num">1532</span>
+            <span class="pl-sub" data-you-sub>Your time · 3:00 AM</span>
+            <span class="clk num" data-clk-w>5:00</span>
+          </div>
+          <p class="slip-status" data-status aria-live="polite">Blitz 5+0 · Rated on Chess.com</p>
+        </div>
+      </div>
+
+      <div class="chips" role="radiogroup" aria-label="Stake">
+        <button class="chip" type="button" role="radio" aria-checked="false" data-stake="5">$5</button>
+        <button class="chip" type="button" role="radio" aria-checked="false" data-stake="10">$10</button>
+        <button class="chip" type="button" role="radio" aria-checked="true" data-stake="20">$20</button>
+        <button class="chip" type="button" role="radio" aria-checked="false" data-stake="50">$50</button>
+      </div>
+
+      <div class="win">
+        <div class="win-l">
+          <span class="win-label" data-win-label>Win</span>
+          <span class="roll num" data-roll-win data-max="+$100.00" aria-live="polite">$40.00</span>
+        </div>
+        <p class="win-math num" data-math>Stake $20 · $1 fee</p>
+      </div>
+
+      <div class="swipe" data-swipe>
+        <div class="swipe-fill" aria-hidden="true"></div>
+        <span class="swipe-label" data-swipe-label aria-hidden="true">Swipe to bet $20</span>
+        <span class="swipe-done" aria-hidden="true">Matched · <span data-pot>$40</span> pot locked</span>
+        <button class="swipe-thumb" type="button" data-thumb aria-label="Bet $20 to win $40. Tap, or drag to the right.">
+          <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path class="i-arrow" d="M4 10h11m-4.5-4.5L15 10l-4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path class="i-check" d="M4.5 10.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="btn btn-ghost swipe-again" type="button" data-again>Play again</button>
+      </div>
+      <p class="slip-foot">Preview. No money moves.</p>
+    </div>
+  </div>
+
+  <div class="feed" aria-label="Payout feed, preview">
+    <p class="feed-label"><span>Payouts</span><span class="feed-sub">Preview</span></p>
+    <div class="feed-track" data-feed aria-hidden="true"></div>
+  </div>
+</section>
+
+<section class="sec" id="how" aria-labelledby="how-h">
+  <div class="wrap">
+    <h2 class="h2" id="how-h">How it works</h2>
+    <p class="sub">Three steps. The bet takes one swipe.</p>
+    <div class="steps">
+      <article class="step reveal">
+        <div class="vis vis-link" aria-hidden="true">
+          <div class="field"><span class="field-pre">chess.com/member/</span><span class="field-val" data-type="rob_nyc"></span><span class="caret"></span></div>
+          <div class="linked">
+            <span class="ok"><svg viewBox="0 0 20 20" width="12" height="12"><path d="M4.5 10.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span>Linked</span><span class="rating num">Blitz 1532</span>
+          </div>
+        </div>
+        <h3>Link.</h3>
+        <p>Connect your Chess.com account once. Your username and rating come with you.</p>
+      </article>
+      <article class="step reveal">
+        <div class="vis vis-bet" aria-hidden="true">
+          <div class="mini-chips"><span>$5</span><span>$10</span><span class="on">$20</span><span>$50</span></div>
+          <div class="mini-swipe"><span class="mini-thumb"></span><span class="mini-label">Swipe to bet $20</span></div>
+        </div>
+        <h3>Bet.</h3>
+        <p>Pick a stake and swipe once. We match you with a player at your rating, anywhere in the world.</p>
+      </article>
+      <article class="step reveal">
+        <div class="vis vis-win" aria-hidden="true">
+          <canvas class="mini-board" data-mate-board></canvas>
+          <div class="won">
+            <span class="won-l">Checkmate</span>
+            <span class="won-n num">+$40.00</span>
+            <span class="won-s">Paid in USDC</span>
+          </div>
+        </div>
+        <h3>Play and win.</h3>
+        <p>Play on Chess.com, with its ratings and cheat detection. Win, and the pot lands in your wallet about a minute after the game ends.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="sec sec-math" aria-labelledby="math-h">
+  <div class="wrap">
+    <h2 class="h2" id="math-h">Every bet, in plain numbers.</h2>
+    <div class="math reveal" data-math-row>
+      <div class="m-cell">
+        <span class="m-n roll num" data-roll-math="20" data-max="$20">$0</span>
+        <span class="m-l">Your stake</span>
+      </div>
+      <div class="m-cell">
+        <span class="m-n roll num" data-roll-math="1" data-max="$1">$0</span>
+        <span class="m-l">Fee, shown up front</span>
+      </div>
+      <div class="m-cell m-win">
+        <span class="m-n roll num" data-roll-math="40" data-max="$40">$0</span>
+        <span class="m-l">Win, in USDC</span>
+      </div>
+    </div>
+    <p class="math-note">You and your opponent each stake $20. The winner takes the $40 pot, held in escrow until the game ends. A draw returns both stakes.</p>
+    <p class="token-line">Coming later: the GM token, for lower fees and early access.</p>
+  </div>
+</section>
+
+<section class="sec" id="friends" aria-labelledby="friends-h">
+  <div class="wrap">
+    <h2 class="h2" id="friends-h">Better with friends.</h2>
+    <p class="sub">Every game can start in a group chat.</p>
+    <div class="friends">
+      <article class="fr reveal">
+        <div class="vis vis-challenge" aria-hidden="true">
+          <div class="msg">
+            <span class="ava">R</span>
+            <div class="msg-body">
+              <p class="msg-t"><b>Rob</b> challenged you</p>
+              <p class="msg-s num">Blitz 5+0 · Stake $20 · Win $40</p>
+              <span class="msg-link">gm.bet/c/rob</span>
+            </div>
+          </div>
+          <span class="accept">Accept</span>
+        </div>
+        <h3>Challenge a friend.</h3>
+        <p>Send a link. They tap it, and the bet is on.</p>
+      </article>
+      <article class="fr reveal">
+        <div class="vis vis-share" aria-hidden="true">
+          <div class="share-card">
+            <canvas class="mini-board" data-share-board></canvas>
+            <div class="share-t">
+              <span class="share-n num">+$40</span>
+              <span class="share-s">Rob beat Min · Blitz 5+0</span>
+              <span class="share-d">gm.bet</span>
+            </div>
+          </div>
+        </div>
+        <h3>Share every win.</h3>
+        <p>Each win makes a card with the final board, ready for your group chat.</p>
+      </article>
+      <article class="fr reveal">
+        <div class="vis vis-follow" aria-hidden="true">
+          <ul class="follow">
+            <li><span class="ava">A</span><span class="f-n">Anna <i class="num">1812</i></span><span class="f-live"><span class="dot-live"></span>Live</span><span class="f-pot num">Pot $40</span></li>
+            <li><span class="ava">K</span><span class="f-n">Kenji <i class="num">1790</i></span><span class="f-live"><span class="dot-live"></span>Live</span><span class="f-pot num">Pot $100</span></li>
+            <li><span class="ava">S</span><span class="f-n">Sofia <i class="num">2034</i></span><span class="f-idle">Next game soon</span><span class="f-pot num">Pot $20</span></li>
+          </ul>
+        </div>
+        <h3>Follow players.</h3>
+        <p>Watch the best players’ games live, and see what is on the line.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="sec sec-join" id="join" aria-labelledby="join-h">
+  <div class="wrap join">
+    <div class="join-copy">
+      <h2 class="h2" id="join-h">Get in early.</h2>
+      <p class="sub">The beta opens in October. Tell us how you want to be part of it. Every friend who joins with your link moves you up the line.</p>
+    </div>
+
+    <div class="join-card">
+      <form class="form" data-form novalidate>
+        <p class="invited" data-invited hidden>A friend invited you. Join and you both move up.</p>
+        <label class="fld">
+          <span class="fld-l">Email</span>
+          <input type="email" name="email" autocomplete="email" inputmode="email" placeholder="you@example.com" required maxlength="254">
+        </label>
+        <label class="fld">
+          <span class="fld-l">Chess.com username <span class="opt">optional</span></span>
+          <input type="text" name="chess_username" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="your username" maxlength="50">
+        </label>
+        <fieldset class="roles">
+          <legend class="fld-l">I want to…</legend>
+          <label class="role"><input type="checkbox" name="roles" value="play" checked><span class="role-box"><b>Play</b><span>Put me in the beta.</span></span></label>
+          <label class="role"><input type="checkbox" name="roles" value="team"><span class="role-box"><b>Join the team</b><span>I want to build this.</span></span></label>
+          <label class="role"><input type="checkbox" name="roles" value="back"><span class="role-box"><b>Back us</b><span>I want to invest or advise.</span></span></label>
+        </fieldset>
+        <label class="fld" data-team hidden>
+          <span class="fld-l">What do you do? Add a link.</span>
+          <input type="text" name="team_note" placeholder="Engineer, designer… plus a link" maxlength="500">
+        </label>
+        <label class="hp" aria-hidden="true">Company <input type="text" name="company" tabindex="-1" autocomplete="off"></label>
+        <button class="btn btn-green btn-block" type="submit">Count me in</button>
+        <p class="status" data-status-form role="status"></p>
+      </form>
+
+      <div class="done" data-done hidden tabindex="-1">
+        <p class="done-h">gm. You’re on the list.</p>
+        <p class="done-msg" data-done-msg>We’ll email you when the beta opens in October.</p>
+        <div class="place">
+          <span class="place-l">Your place in line</span>
+          <span class="place-n roll num" data-place data-max="#00000">#0</span>
+          <span class="place-refs" data-refs>0 friends joined with your link</span>
+        </div>
+        <label class="fld">
+          <span class="fld-l">Your invite link</span>
+          <span class="invite">
+            <input type="text" readonly data-invite value="" aria-label="Your invite link">
+            <button class="btn btn-light btn-sm" type="button" data-copy>Copy</button>
+            <button class="btn btn-ghost btn-sm" type="button" data-share hidden>Share</button>
+          </span>
+        </label>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <p class="foot-brand"><span class="mark mark-sm" aria-hidden="true">gm</span> GM Bet · Beta in October</p>
+    <ul class="fine">
+      <li>Preview: the games, players, and payouts on this page are samples. No money moves.</li>
+      <li>GM Bet is not affiliated with Chess.com.</li>
+      <li>Real-money play only where it is legal, for adults 18 and over.</li>
+      <li>Nothing on this page is an offer to sell securities or tokens.</li>
+      <li>Chess pieces by Colin M.L. Burnett, BSD license.</li>
+    </ul>
+  </div>
+</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

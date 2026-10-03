@@ -1,0 +1,19 @@
+{
+  "name": "gm-bet-concept-b",
+  "private": true,
+  "type": "module",
+  "description": "GM Bet landing page, concept B: Live terminal",
+  "scripts": {
+    "serve": "python3 -m http.server 8742 --bind 127.0.0.1 --directory site",
+    "games": "node scripts/games.mjs",
+    "assets": "node scripts/assets.mjs",
+    "verify": "node scripts/verify.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "chess.js": "^1.4.0",
+    "playwright-core": "^1.63.0"
+  }
+}
