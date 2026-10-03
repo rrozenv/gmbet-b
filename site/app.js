@@ -97,18 +97,31 @@ class Roll {
       rebuilt = true;
     }
     const digits = [...text].filter((c) => /\d/.test(c)).map(Number);
-    const jump = (vals) => {
+    const token = (this.token = (this.token || 0) + 1);
+    const apply = (vals, timed) =>
+      this.strips.forEach((s, i) => {
+        if (timed) s.style.setProperty("--dl", delay + i * (EIGHTH / 4) + "ms");
+        s.style.setProperty("--d", vals[i]);
+      });
+    // Restarting a transition waits two frames instead of forcing a synchronous layout.
+    const later2 = (fn) => requestAnimationFrame(() => requestAnimationFrame(() => token === this.token && fn()));
+    if (RM || instant) {
       this.node.classList.add("no-anim");
-      this.strips.forEach((s, i) => s.style.setProperty("--d", vals[i]));
-      void this.node.offsetWidth;
-      this.node.classList.remove("no-anim");
-    };
-    if (RM || instant) return jump(digits);
-    if (from0 || rebuilt) jump(digits.map(() => 0));
-    this.strips.forEach((s, i) => {
-      s.style.setProperty("--dl", delay + i * (EIGHTH / 4) + "ms");
-      s.style.setProperty("--d", digits[i]);
-    });
+      apply(digits, false);
+      later2(() => this.node.classList.remove("no-anim"));
+      return;
+    }
+    if (from0 || rebuilt) {
+      this.node.classList.add("no-anim");
+      apply(digits.map(() => 0), false);
+      later2(() => {
+        this.node.classList.remove("no-anim");
+        apply(digits, true);
+      });
+      return;
+    }
+    this.node.classList.remove("no-anim");
+    apply(digits, true);
   }
 }
 
@@ -528,13 +541,15 @@ function won(pot) {
   later(resetSlip, 9000);
 }
 
+let sweepAlt = false;
 function sweep() {
-  slip.classList.remove("is-sweep");
-  void slip.offsetWidth;
-  slip.classList.add("is-sweep");
+  sweepAlt = !sweepAlt;
+  slip.classList.remove(sweepAlt ? "is-sweep" : "is-sweep2");
+  slip.classList.add(sweepAlt ? "is-sweep2" : "is-sweep");
 }
 
 function resetSlip() {
+  if (!heroVisible && S.state === "won") return later(resetSlip, 2000);
   if (MOTION) G.to(wallEl, { scale: 1, duration: 1.5, ease: SPRING_SOFT });
   S.timers.forEach(clearTimeout);
   S.timers = [];
@@ -561,9 +576,7 @@ function swapOpp(o, stake) {
   if (stake) S.stake = stake;
   renderOpp();
   renderStake(true);
-  slip.classList.remove("is-swap");
-  void slip.offsetWidth;
-  slip.classList.add("is-swap");
+  if (MOTION) G.fromTo(slip, { scale: 0.985 }, { scale: 1, duration: 0.5, ease: SPRING, clearProps: "transform" });
 }
 
 chips.forEach((c) =>

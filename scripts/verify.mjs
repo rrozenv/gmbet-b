@@ -256,6 +256,35 @@ try {
     await ctx.close();
   }
 
+  // 4b. Live Chess.com lookup against the public API: a real account, then one that does not exist
+  {
+    const ctx = await browser.newContext(PHONE);
+    const page = await ctx.newPage();
+    await page.goto(BASE, { waitUntil: "networkidle" });
+    await scrollTo(page, (await topOf(page, "#link")) - 32);
+    await page.waitForTimeout(1600);
+    await page.fill("[data-lookup-input]", "hikaru");
+    await page.locator("[data-lookup-btn]").tap();
+    await page.waitForSelector('[data-me][data-state="found"]', { timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(1200);
+    await page.locator(".link-card").screenshot({ path: path.join(OUT, "phone-chesscom-lookup.png") });
+    const found = await page.evaluate(() => ({
+      state: document.querySelector("[data-me]").dataset.state,
+      name: document.querySelector("[data-me-name]").textContent,
+      sub: document.querySelector("[data-me-sub]").textContent,
+      blitz: document.querySelector('[data-me-r="chess_blitz"]').textContent,
+      record: document.querySelector("[data-me-rec]").textContent,
+      avatarShown: !document.querySelector("[data-me-ava]").hidden,
+      heroYou: document.querySelector(".pl-you .pl-name").textContent + " " + document.querySelector(".pl-you .pl-r").textContent,
+    }));
+    await page.fill("[data-lookup-input]", "zzzz-no-such-user-zz");
+    await page.locator("[data-lookup-btn]").tap();
+    await page.waitForSelector('[data-me][data-state="missing"]', { timeout: 15000 }).catch(() => {});
+    const missing = await page.evaluate(() => ({ state: document.querySelector("[data-me]").dataset.state, msg: document.querySelector("[data-me-msg]").textContent }));
+    report.chesscomLookup = { found, missing };
+    await ctx.close();
+  }
+
   if (!QUICK) {
     // 5. Recordings
     report.videoPhone = await record("interaction-phone-15s", { ...PHONE, deviceScaleFactor: 2 }, async (page) => {

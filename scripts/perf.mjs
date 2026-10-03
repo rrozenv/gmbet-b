@@ -23,7 +23,8 @@ function framesFromTrace(trace, t0, t1) {
   for (const e of events) {
     if (e.name !== "PipelineReporter" || e.ph !== "b") continue;
     if (e.ts < t0 || e.ts > t1) continue;
-    const s = e.args && e.args.chrome_frame_reporter && e.args.chrome_frame_reporter.state;
+    const fr = e.args && (e.args.frame_reporter || e.args.chrome_frame_reporter);
+    const s = fr && fr.state;
     if (s) states[s] = (states[s] || 0) + 1;
   }
   const presented = (states.STATE_PRESENTED_ALL || 0) + (states.STATE_PRESENTED_PARTIAL || 0);
